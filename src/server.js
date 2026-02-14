@@ -396,7 +396,6 @@ app.get("/setup", (_req, res) => {
 const AUTH_GROUPS = [
   {
     value: "openai", label: "OpenAI", hint: "Codex OAuth + API key", options: [
-      { value: "codex-cli", label: "OpenAI Codex OAuth (Codex CLI)" },
       { value: "openai-codex", label: "OpenAI Codex (ChatGPT OAuth)" },
       { value: "openai-api-key", label: "OpenAI API key" }
     ]
@@ -483,6 +482,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
   res.json({
     configured: isConfigured(),
     gatewayTarget: GATEWAY_TARGET,
+    gatewayToken: OPENCLAW_GATEWAY_TOKEN,
     openclawVersion: version.output.trim(),
     channelsAddHelp: channelsHelp.output,
     authGroups: AUTH_GROUPS,

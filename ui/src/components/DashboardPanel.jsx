@@ -101,7 +101,7 @@ export default function DashboardPanel({ status, onNavigateConfig, onNavigateDat
                         icon="🚀"
                         title="OpenClaw UI"
                         description="Open the main interface"
-                        href="/openclaw"
+                        href={`/openclaw?token=${encodeURIComponent(data?.gatewayToken || "")}`}
                     />
                     <ActionCard
                         icon="⚙️"

@@ -116,7 +116,7 @@ export default function StatusPanel({ status }) {
                 <Card>
                     <CardRow label="OpenClaw UI" description={data?.configured ? "Open the main interface" : "Run setup first to enable"}>
                         {data?.configured ? (
-                            <a href="/openclaw" target="_blank" className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors">
+                            <a href={`/openclaw#token=${encodeURIComponent(data?.gatewayToken || "")}`} target="_blank" className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors">
                                 Open
                             </a>
                         ) : (

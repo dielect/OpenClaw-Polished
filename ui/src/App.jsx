@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoginPage from "./components/LoginPage";
 import DashboardPanel from "./components/DashboardPanel";
 import ApprovalsPanel from "./components/ApprovalsPanel";
@@ -26,9 +26,9 @@ function StatusLight({ active, loading }) {
 
 const NAV = [
     { id: "dashboard", label: "Dashboard" },
-    { id: "approvals", label: "Approvals", requireConfigured: true },
-    { id: "terminal", label: "Terminal", requireConfigured: true },
-    { id: "config", label: "Config", requireConfigured: true },
+    { id: "approvals", label: "Approvals" },
+    { id: "terminal", label: "Terminal" },
+    { id: "config", label: "Config" },
     { id: "data", label: "Data" },
 ];
 
@@ -48,10 +48,7 @@ export default function App() {
         setTab("data");
     }, []);
 
-    useEffect(() => {
-        const item = NAV.find((n) => n.id === tab);
-        if (item?.requireConfigured && !configured) setTab("dashboard");
-    }, [configured, tab]);
+    // (no longer gating tabs on configured state)
 
     useEffect(() => {
         const handler = () => setAuthed(false);
@@ -73,24 +70,18 @@ export default function App() {
                     <span className="text-sm font-semibold tracking-tight">OpenClaw</span>
                 </div>
                 <nav className="flex-1 py-2 px-3 space-y-1">
-                    {NAV.map((item) => {
-                        const disabled = item.requireConfigured && !configured;
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => !disabled && setTab(item.id)}
-                                disabled={disabled}
-                                className={`w-full flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${disabled
-                                    ? "text-muted-foreground/40 cursor-not-allowed"
-                                    : tab === item.id
-                                        ? "bg-accent text-accent-foreground cursor-pointer"
-                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                                    }`}
-                            >
-                                {item.label}
-                            </button>
-                        );
-                    })}
+                    {NAV.map((item) => (
+                        <button
+                            key={item.id}
+                            onClick={() => setTab(item.id)}
+                            className={`w-full flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${tab === item.id
+                                ? "bg-accent text-accent-foreground cursor-pointer"
+                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                }`}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
                 </nav>
                 <div className="p-3 border-t border-border">
                     <button

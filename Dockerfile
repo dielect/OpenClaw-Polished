@@ -51,6 +51,9 @@ ENV NODE_ENV=production
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates \
+    python3 \
+    make \
+    g++ \
   && rm -rf /var/lib/apt/lists/*
 
 # `openclaw update` expects pnpm. Provide it in the runtime image.
@@ -58,9 +61,13 @@ RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
 WORKDIR /app
 
-# Wrapper deps
-COPY package.json ./
+# Wrapper deps (includes node-pty which needs native compilation)
+COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
+
+# Remove build tools after native compilation to keep image smaller
+RUN apt-get purge -y --auto-remove python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 
 # Copy built openclaw
 COPY --from=openclaw-build /openclaw /openclaw

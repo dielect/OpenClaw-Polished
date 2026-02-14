@@ -1,77 +1,102 @@
-import { useState } from "react";
-import { Section, Card, CardContent, Button, Input, LogOutput } from "./ui";
-import Combobox from "./Combobox";
-import { runConsoleCmd } from "../api";
-
-const COMMANDS = [
-    { value: "gateway.restart", label: "gateway.restart", description: "Restart the wrapper-managed gateway" },
-    { value: "gateway.stop", label: "gateway.stop", description: "Stop the gateway process" },
-    { value: "gateway.start", label: "gateway.start", description: "Start the gateway if stopped" },
-    { value: "openclaw.status", label: "openclaw status", description: "Show current status" },
-    { value: "openclaw.health", label: "openclaw health", description: "Run health check" },
-    { value: "openclaw.doctor", label: "openclaw doctor", description: "Diagnose common issues" },
-    { value: "openclaw.logs.tail", label: "openclaw logs --tail N", description: "Show recent log lines (arg: count)" },
-    { value: "openclaw.config.get", label: "openclaw config get", description: "Read a config value (arg: path)" },
-    { value: "openclaw.version", label: "openclaw --version", description: "Show OpenClaw version" },
-    { value: "openclaw.devices.list", label: "openclaw devices list", description: "List pending device requests" },
-    { value: "openclaw.devices.approve", label: "openclaw devices approve", description: "Approve a device (arg: requestId)" },
-    { value: "openclaw.plugins.list", label: "openclaw plugins list", description: "List available plugins" },
-    { value: "openclaw.plugins.enable", label: "openclaw plugins enable", description: "Enable a plugin (arg: name)" },
-];
+import { useEffect, useRef } from "react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import "@xterm/xterm/css/xterm.css";
+import { getTerminalWsUrl } from "../api";
 
 export default function ConsolePanel() {
-    const [cmd, setCmd] = useState(COMMANDS[0].value);
-    const [arg, setArg] = useState("");
-    const [output, setOutput] = useState("");
-    const [running, setRunning] = useState(false);
+    const containerRef = useRef(null);
+    const termRef = useRef(null);
+    const wsRef = useRef(null);
 
-    const handleRun = async () => {
-        // Normalize: "openclaw models list" → "openclaw.models.list"
-        const normalizedCmd = cmd.includes(" ") ? cmd.trim().replace(/\s+/g, ".") : cmd;
-        setRunning(true);
-        setOutput(`Running ${normalizedCmd}...\n`);
-        try {
-            const r = await runConsoleCmd(normalizedCmd, arg);
-            setOutput(r.output || JSON.stringify(r, null, 2));
-        } catch (e) {
-            setOutput((p) => p + `Error: ${e}\n`);
-        } finally {
-            setRunning(false);
-        }
-    };
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const term = new Terminal({
+            cursorBlink: true,
+            fontSize: 13,
+            fontFamily: "'IBM Plex Mono', 'Menlo', monospace",
+            theme: {
+                background: "#09090b",
+                foreground: "#fafafa",
+                cursor: "#fafafa",
+                selectionBackground: "#27272a",
+                black: "#09090b",
+                red: "#ef4444",
+                green: "#22c55e",
+                yellow: "#eab308",
+                blue: "#3b82f6",
+                magenta: "#a855f7",
+                cyan: "#06b6d4",
+                white: "#fafafa",
+            },
+        });
+
+        const fitAddon = new FitAddon();
+        term.loadAddon(fitAddon);
+        term.loadAddon(new WebLinksAddon());
+        term.open(containerRef.current);
+        fitAddon.fit();
+        termRef.current = term;
+
+        // Connect WebSocket
+        const url = getTerminalWsUrl();
+        const ws = new WebSocket(url);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+            // Send initial size
+            ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+        };
+
+        ws.onmessage = (e) => {
+            term.write(e.data);
+        };
+
+        ws.onclose = () => {
+            term.write("\r\n\x1b[90m[Connection closed]\x1b[0m\r\n");
+        };
+
+        ws.onerror = () => {
+            term.write("\r\n\x1b[31m[Connection error]\x1b[0m\r\n");
+        };
+
+        term.onData((data) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(data);
+            }
+        });
+
+        // Handle resize
+        const onResize = () => {
+            fitAddon.fit();
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+            }
+        };
+
+        const resizeObserver = new ResizeObserver(onResize);
+        resizeObserver.observe(containerRef.current);
+
+        return () => {
+            resizeObserver.disconnect();
+            ws.close();
+            term.dispose();
+        };
+    }, []);
 
     return (
-        <div className="space-y-6">
-            <Section title="Commands" description="Run preset or custom commands for debugging and recovery.">
-                <Card>
-                    <CardContent className="space-y-3">
-                        <div className="flex items-end gap-2">
-                            <div className="flex-1 space-y-1.5">
-                                <label className="text-sm font-medium">Command</label>
-                                <Combobox
-                                    value={cmd}
-                                    onChange={setCmd}
-                                    options={COMMANDS}
-                                    placeholder="Search commands..."
-                                    freeSolo
-                                />
-                            </div>
-                            <div className="flex-1 space-y-1.5">
-                                <label className="text-sm font-medium">Argument</label>
-                                <Input
-                                    value={arg}
-                                    onChange={(e) => setArg(e.target.value)}
-                                    placeholder="Optional (e.g. 200, gateway.port)"
-                                />
-                            </div>
-                            <Button size="sm" onClick={handleRun} disabled={running} className="shrink-0">
-                                {running ? "..." : "Run"}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-                <LogOutput>{output}</LogOutput>
-            </Section>
+        <div className="h-[calc(100vh-7rem)] flex flex-col">
+            <div className="mb-3">
+                <p className="text-sm text-muted-foreground">
+                    Interactive terminal session. Run <code className="bg-muted px-1 rounded text-xs">openclaw</code> commands directly.
+                </p>
+            </div>
+            <div
+                ref={containerRef}
+                className="flex-1 rounded-lg border border-border overflow-hidden bg-[#09090b] p-1"
+            />
         </div>
     );
 }

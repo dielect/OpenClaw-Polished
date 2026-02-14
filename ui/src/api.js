@@ -159,3 +159,8 @@ export async function exportBackup() {
     a.click();
     URL.revokeObjectURL(url);
 }
+export function getTerminalWsUrl() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const token = btoa(`:${sessionStorage.getItem("openclaw_auth") || ""}`);
+    return `${proto}//${location.host}/setup/terminal?token=${encodeURIComponent(token)}`;
+}

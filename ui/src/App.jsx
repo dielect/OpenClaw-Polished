@@ -10,7 +10,7 @@ import { isAuthed, restoreAuth, clearAuth } from "./api";
 const NAV = [
     { id: "status", label: "Status" },
     { id: "setup", label: "Setup" },
-    { id: "console", label: "Commands", requireConfigured: true },
+    { id: "console", label: "Terminal", requireConfigured: true },
     { id: "config", label: "Config", requireConfigured: true },
 ];
 

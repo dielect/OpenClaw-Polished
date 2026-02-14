@@ -1,12 +1,14 @@
 import childProcess from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import { WebSocketServer } from "ws";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 
 import express from "express";
 import httpProxy from "http-proxy";
+import pty from "node-pty";
 import * as tar from "tar";
 
 // Railway deployments sometimes inject PORT=3000 by default. We want the wrapper to
@@ -1267,12 +1269,79 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
   }
 });
 
+// --- Web terminal (PTY over WebSocket) ---
+const terminalWss = new WebSocketServer({ noServer: true });
+
+function authenticateWs(req) {
+  // Check Basic auth from query param (WebSocket can't send custom headers easily)
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const token = url.searchParams.get("token") || "";
+  if (!token) return false;
+  try {
+    const decoded = Buffer.from(token, "base64").toString("utf8");
+    const idx = decoded.indexOf(":");
+    const password = idx >= 0 ? decoded.slice(idx + 1) : "";
+    return password === SETUP_PASSWORD;
+  } catch { return false; }
+}
+
+terminalWss.on("connection", (ws) => {
+  const shell = process.env.SHELL || "/bin/bash";
+  const term = pty.spawn(shell, [], {
+    name: "xterm-256color",
+    cols: 80,
+    rows: 24,
+    cwd: STATE_DIR,
+    env: { ...process.env, TERM: "xterm-256color" },
+  });
+
+  term.onData((data) => {
+    try { ws.send(data); } catch { }
+  });
+
+  term.onExit(() => {
+    try { ws.close(); } catch { }
+  });
+
+  ws.on("message", (msg) => {
+    const str = msg.toString();
+    // Handle resize messages: JSON { type: "resize", cols, rows }
+    try {
+      const parsed = JSON.parse(str);
+      if (parsed.type === "resize" && parsed.cols && parsed.rows) {
+        term.resize(Math.max(1, parsed.cols), Math.max(1, parsed.rows));
+        return;
+      }
+    } catch { /* not JSON, treat as input */ }
+    term.write(str);
+  });
+
+  ws.on("close", () => {
+    try { term.kill(); } catch { }
+  });
+});
+
 server.on("upgrade", async (req, socket, head) => {
+  const pathname = req.url?.split("?")[0];
+
+  // Terminal WebSocket
+  if (pathname === "/setup/terminal") {
+    if (!authenticateWs(req)) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+    terminalWss.handleUpgrade(req, socket, head, (ws) => {
+      terminalWss.emit("connection", ws, req);
+    });
+    return;
+  }
+
+  // Gateway proxy
   if (!isConfigured()) {
     socket.destroy();
     return;
   }
-  // Fast path: skip async if gateway is already running.
   if (!gatewayProc) {
     try {
       await ensureGatewayRunning();

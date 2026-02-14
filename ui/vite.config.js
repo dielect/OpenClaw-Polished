@@ -28,6 +28,10 @@ export default defineConfig({
                 target: "http://localhost:8080",
                 changeOrigin: true,
             },
+            "/setup/terminal": {
+                target: "ws://localhost:8080",
+                ws: true,
+            },
         },
     },
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import LoginPage from "./components/LoginPage";
 import DashboardPanel from "./components/DashboardPanel";
 import ConsolePanel from "./components/ConsolePanel";
@@ -31,8 +31,14 @@ const NAV = [
 export default function App() {
     const [authed, setAuthed] = useState(() => restoreAuth() && isAuthed());
     const [tab, setTab] = useState("dashboard");
+    const [pendingPatch, setPendingPatch] = useState(null);
     const status = useStatus(authed);
     const configured = status.data?.configured;
+
+    const navigateToConfig = useCallback((patch) => {
+        setPendingPatch(patch);
+        setTab("config");
+    }, []);
 
     useEffect(() => {
         const item = NAV.find((n) => n.id === tab);
@@ -116,10 +122,10 @@ export default function App() {
                 {tab === "terminal" ? (
                     <ConsolePanel />
                 ) : tab === "config" ? (
-                    <ConfigPanel />
+                    <ConfigPanel pendingPatch={pendingPatch} onPatchConsumed={() => setPendingPatch(null)} />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        <DashboardPanel status={status} />
+                        <DashboardPanel status={status} onNavigateConfig={navigateToConfig} />
                     </div>
                 )}
             </main>

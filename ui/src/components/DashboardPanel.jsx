@@ -84,8 +84,42 @@ function ImportDialog({ open, onClose, onDone }) {
     );
 }
 
+/* ── Quick patch preset ── */
+const QUICK_PATCHES = [
+    {
+        icon: "🔧",
+        title: "Add Provider",
+        description: "Insert a new provider template",
+        patch: {
+            op: "append",
+            path: "providers",
+            value: { name: "new-provider", baseURL: "https://api.example.com/v1", apiKey: "sk-xxx", models: ["model-name"] },
+        },
+    },
+    {
+        icon: "📡",
+        title: "Add Channel",
+        description: "Insert a new channel template",
+        patch: {
+            op: "append",
+            path: "channels",
+            value: { type: "telegram", token: "BOT_TOKEN_HERE" },
+        },
+    },
+    {
+        icon: "🔌",
+        title: "Enable Plugin",
+        description: "Add a plugin entry to the config",
+        patch: {
+            op: "merge",
+            path: "plugins",
+            value: { "plugin-name": { enabled: true } },
+        },
+    },
+];
+
 /* ── Main Dashboard ── */
-export default function DashboardPanel({ status }) {
+export default function DashboardPanel({ status, onNavigateConfig }) {
     const { data, error, loading, refresh } = status;
     const configured = data?.configured;
 
@@ -139,6 +173,27 @@ export default function DashboardPanel({ status }) {
                         description={showSetup ? "Collapse the setup form" : "Change provider, channels, or reset"}
                         onClick={() => setShowSetup((v) => !v)}
                     />
+                </div>
+            )}
+
+            {/* ── Quick config patches ── */}
+            {configured && (
+                <div>
+                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick Config</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                        {QUICK_PATCHES.map((p) => (
+                            <button
+                                key={p.title}
+                                type="button"
+                                onClick={() => onNavigateConfig(p.patch)}
+                                className="flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-all hover:border-foreground/20 hover:shadow-sm hover:-translate-y-0.5 cursor-pointer"
+                            >
+                                <span className="text-xl">{p.icon}</span>
+                                <span className="text-xs font-semibold">{p.title}</span>
+                                <span className="text-[11px] text-muted-foreground leading-tight">{p.description}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
 

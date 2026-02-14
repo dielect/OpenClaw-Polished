@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Section, Card, CardContent, Button, Input, Label, Badge } from "./ui";
-import RichSelect from "./RichSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import { approvePairing, getPendingDevices, approveDevice } from "../api";
 
 /* ── Pairing Approve Form (replaces native prompt()) ── */
-const CHANNEL_OPTIONS = [
+const CHANNELS = [
     { value: "telegram", label: "Telegram" },
     { value: "discord", label: "Discord" },
 ];
@@ -34,11 +33,26 @@ function PairingForm({ onLog }) {
     return (
         <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                     <Label>Channel</Label>
-                    <RichSelect value={channel} onChange={setChannel} options={CHANNEL_OPTIONS} placeholder="Select channel..." />
+                    <div className="flex rounded-md border border-input bg-muted p-0.5 w-fit">
+                        {CHANNELS.map((ch) => (
+                            <button
+                                key={ch.value}
+                                type="button"
+                                onClick={() => setChannel(ch.value)}
+                                className={`px-3 py-1.5 text-sm rounded-sm transition-colors cursor-pointer ${
+                                    channel === ch.value
+                                        ? "bg-background text-foreground shadow-sm font-medium"
+                                        : "text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                {ch.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                     <Label>Pairing code</Label>
                     <Input
                         value={code}

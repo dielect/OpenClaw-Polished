@@ -50,8 +50,7 @@ export default function DataPanel({ status }) {
             <Section title="Export backup" description="Download a .tar.gz archive of your /data directory.">
                 <Card>
                     <CardContent className="flex items-center gap-4">
-                        <Button onClick={handleExport} disabled={exporting || !configured} size="sm">
-                            <span className="text-base">📦</span>
+                        <Button variant="outline" onClick={handleExport} disabled={exporting || !configured} size="sm">
                             {exporting ? "Exporting..." : "Export backup"}
                         </Button>
                         {!configured && (
@@ -73,7 +72,6 @@ export default function DataPanel({ status }) {
                         />
                         <div>
                             <Button variant="destructive" size="sm" onClick={handleImport} disabled={importing}>
-                                <span className="text-base">📥</span>
                                 {importing ? "Importing..." : "Import backup"}
                             </Button>
                         </div>

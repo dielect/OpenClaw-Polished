@@ -4,6 +4,7 @@ import DashboardPanel from "./components/DashboardPanel";
 import ApprovalsPanel from "./components/ApprovalsPanel";
 import ConsolePanel from "./components/ConsolePanel";
 import ConfigPanel from "./components/ConfigPanel";
+import DataPanel from "./components/DataPanel";
 import { useStatus } from "./hooks/useStatus";
 import { isAuthed, restoreAuth, clearAuth } from "./api";
 
@@ -28,6 +29,7 @@ const NAV = [
     { id: "approvals", label: "Approvals", requireConfigured: true },
     { id: "terminal", label: "Terminal", requireConfigured: true },
     { id: "config", label: "Config", requireConfigured: true },
+    { id: "data", label: "Data" },
 ];
 
 export default function App() {
@@ -40,6 +42,10 @@ export default function App() {
     const navigateToConfig = useCallback((patch) => {
         setPendingPatch(patch);
         setTab("config");
+    }, []);
+
+    const navigateToData = useCallback(() => {
+        setTab("data");
     }, []);
 
     useEffect(() => {
@@ -127,9 +133,11 @@ export default function App() {
                     <ConfigPanel pendingPatch={pendingPatch} onPatchConsumed={() => setPendingPatch(null)} />
                 ) : tab === "approvals" ? (
                     <ApprovalsPanel />
+                ) : tab === "data" ? (
+                    <DataPanel status={status} />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        <DashboardPanel status={status} onNavigateConfig={navigateToConfig} />
+                        <DashboardPanel status={status} onNavigateConfig={navigateToConfig} onNavigateData={navigateToData} />
                     </div>
                 )}
             </main>

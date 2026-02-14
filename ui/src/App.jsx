@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import LoginPage from "./components/LoginPage";
 import DashboardPanel from "./components/DashboardPanel";
+import ApprovalsPanel from "./components/ApprovalsPanel";
 import ConsolePanel from "./components/ConsolePanel";
 import ConfigPanel from "./components/ConfigPanel";
 import { useStatus } from "./hooks/useStatus";
@@ -24,6 +25,7 @@ function StatusLight({ active, loading }) {
 
 const NAV = [
     { id: "dashboard", label: "Dashboard" },
+    { id: "approvals", label: "Approvals", requireConfigured: true },
     { id: "terminal", label: "Terminal", requireConfigured: true },
     { id: "config", label: "Config", requireConfigured: true },
 ];
@@ -123,6 +125,8 @@ export default function App() {
                     <ConsolePanel />
                 ) : tab === "config" ? (
                     <ConfigPanel pendingPatch={pendingPatch} onPatchConsumed={() => setPendingPatch(null)} />
+                ) : tab === "approvals" ? (
+                    <ApprovalsPanel />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
                         <DashboardPanel status={status} onNavigateConfig={navigateToConfig} />

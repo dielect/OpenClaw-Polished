@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Section, Card, CardContent, Button, Input, Label, LogOutput, Separator } from "./ui";
 import RichSelect from "./RichSelect";
 import ConfirmDialog from "./ConfirmDialog";
-import { getAuthGroups, runSetup, resetSetup, approvePairing, getPendingDevices, approveDevice } from "../api";
+import { getAuthGroups, runSetup, resetSetup } from "../api";
 
 function isInteractiveOAuth(value, label) {
     return /OAuth/i.test(label) || /cli|codex|portal/i.test(value);
@@ -29,9 +29,6 @@ export default function SetupForm({ status }) {
 
     const [log, setLog] = useState("");
     const [running, setRunning] = useState(false);
-
-    const [devices, setDevices] = useState([]);
-    const [devicesLog, setDevicesLog] = useState("");
 
     const [dialog, setDialog] = useState(null);
     const showConfirm = useCallback((opts) => new Promise((resolve) => {
@@ -93,47 +90,6 @@ export default function SetupForm({ status }) {
             status.refresh();
         } catch (e) {
             setLog((p) => p + `Error: ${e}\n`);
-        }
-    };
-
-    const handlePairing = async () => {
-        const channel = prompt("Enter channel (telegram or discord):");
-        if (!channel) return;
-        const code = prompt("Enter pairing code:");
-        if (!code) return;
-        setLog((p) => p + `Approving pairing for ${channel}...\n`);
-        try {
-            const text = await approvePairing(channel.trim().toLowerCase(), code.trim());
-            setLog((p) => p + text + "\n");
-        } catch (e) {
-            setLog((p) => p + `Error: ${e}\n`);
-        }
-    };
-
-    const refreshDevices = async () => {
-        setDevicesLog("Loading...");
-        try {
-            const d = await getPendingDevices();
-            setDevices(d.requestIds || []);
-            setDevicesLog(d.requestIds?.length ? "" : "No pending device requests.");
-        } catch (e) {
-            setDevicesLog(`Error: ${e}`);
-        }
-    };
-
-    const handleApproveDevice = async (id) => {
-        const ok = await showConfirm({
-            title: "Approve device?",
-            description: `Device request: ${id}`,
-            confirmLabel: "Approve",
-        });
-        if (!ok) return;
-        try {
-            const r = await approveDevice(id);
-            setDevicesLog(r.output || "Approved.");
-            refreshDevices();
-        } catch (e) {
-            setDevicesLog(`Error: ${e}`);
         }
     };
 
@@ -246,23 +202,9 @@ export default function SetupForm({ status }) {
                 <Button onClick={handleRun} disabled={running}>
                     {running ? "Running..." : "Run setup"}
                 </Button>
-                <Button variant="outline" onClick={handlePairing}>Approve pairing</Button>
                 <Button variant="ghost" onClick={handleReset}>Reset</Button>
             </div>
             <LogOutput>{log}</LogOutput>
-
-            <Section title="Device pairing" description="Approve pending device requests.">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={refreshDevices}>Refresh devices</Button>
-                </div>
-                {devices.map((id) => (
-                    <div key={id} className="flex items-center gap-2 mt-2">
-                        <code className="text-xs font-mono bg-muted px-2 py-1 rounded">{id}</code>
-                        <Button variant="outline" size="sm" onClick={() => handleApproveDevice(id)}>Approve</Button>
-                    </div>
-                ))}
-                {devicesLog && <p className="text-xs text-muted-foreground mt-2">{devicesLog}</p>}
-            </Section>
 
             {dialog && <ConfirmDialog open {...dialog} />}
         </div>

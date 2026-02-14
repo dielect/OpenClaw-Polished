@@ -70,6 +70,24 @@ export default function DashboardPanel({ status, onNavigateConfig, onNavigateDat
 
     const [showSetup, setShowSetup] = useState(false);
 
+    /* First load — show skeleton instead of flashing the setup form */
+    if (loading && !data) {
+        return (
+            <div className="space-y-6 animate-pulse">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="h-32 rounded-xl border border-border bg-muted/40" />
+                    <div className="h-32 rounded-xl border border-border bg-muted/40" />
+                </div>
+                <div className="h-4 w-1/3 rounded bg-muted/40" />
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="h-24 rounded-lg border border-border bg-muted/40" />
+                    <div className="h-24 rounded-lg border border-border bg-muted/40" />
+                    <div className="h-24 rounded-lg border border-border bg-muted/40" />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-10">
             {error && (

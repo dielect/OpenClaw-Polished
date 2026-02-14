@@ -33,7 +33,7 @@ function PairingForm({ onLog }) {
     return (
         <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+                <div className="space-y-4">
                     <Label>Channel</Label>
                     <div className="flex rounded-md border border-input bg-muted p-0.5 w-fit">
                         {CHANNELS.map((ch) => (
@@ -41,18 +41,17 @@ function PairingForm({ onLog }) {
                                 key={ch.value}
                                 type="button"
                                 onClick={() => setChannel(ch.value)}
-                                className={`px-3 py-1.5 text-sm rounded-sm transition-colors cursor-pointer ${
-                                    channel === ch.value
-                                        ? "bg-background text-foreground shadow-sm font-medium"
-                                        : "text-muted-foreground hover:text-foreground"
-                                }`}
+                                className={`px-3 py-1.5 text-sm rounded-sm transition-colors cursor-pointer ${channel === ch.value
+                                    ? "bg-background text-foreground shadow-sm font-medium"
+                                    : "text-muted-foreground hover:text-foreground"
+                                    }`}
                             >
                                 {ch.label}
                             </button>
                         ))}
                     </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                     <Label>Pairing code</Label>
                     <Input
                         value={code}

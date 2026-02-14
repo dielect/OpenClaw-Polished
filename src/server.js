@@ -841,36 +841,28 @@ function extractDeviceRequestIds(text) {
   return Array.from(out);
 }
 
-const ALLOWED_CONSOLE_COMMANDS = new Set([
-  // Wrapper-managed lifecycle
-  "gateway.restart",
-  "gateway.stop",
-  "gateway.start",
+// Wrapper-managed commands (not openclaw CLI) — keep as strict allowlist.
+const GATEWAY_COMMANDS = new Set(["gateway.restart", "gateway.stop", "gateway.start"]);
 
-  // OpenClaw CLI helpers
-  "openclaw.version",
-  "openclaw.status",
-  "openclaw.health",
-  "openclaw.doctor",
-  "openclaw.logs.tail",
-  "openclaw.config.get",
+// Shell metacharacters that must never appear in cmd or arg to prevent injection.
+const SHELL_UNSAFE = /[&|;`$(){}!<>\\#\n\r]/;
 
-  // Device management (for fixing "disconnected (1008): pairing required")
-  "openclaw.devices.list",
-  "openclaw.devices.approve",
-
-  // Plugin management
-  "openclaw.plugins.list",
-  "openclaw.plugins.enable",
-]);
+function isAllowedConsoleCmd(cmd) {
+  if (GATEWAY_COMMANDS.has(cmd)) return true;
+  // Allow any openclaw.* dotted command (e.g. openclaw.config.get, openclaw.channels.add)
+  return /^openclaw\.[a-z][a-z0-9._-]*$/i.test(cmd);
+}
 
 app.post("/setup/api/console/run", requireSetupAuth, async (req, res) => {
   const payload = req.body || {};
   const cmd = String(payload.cmd || "").trim();
   const arg = String(payload.arg || "").trim();
 
-  if (!ALLOWED_CONSOLE_COMMANDS.has(cmd)) {
-    return res.status(400).json({ ok: false, error: "Command not allowed" });
+  if (!isAllowedConsoleCmd(cmd)) {
+    return res.status(400).json({ ok: false, error: "Command not allowed. Must be gateway.* or openclaw.*" });
+  }
+  if (SHELL_UNSAFE.test(cmd) || SHELL_UNSAFE.test(arg)) {
+    return res.status(400).json({ ok: false, error: "Invalid characters in command or argument" });
   }
 
   try {
@@ -945,6 +937,17 @@ app.post("/setup/api/console/run", requireSetupAuth, async (req, res) => {
       if (!name) return res.status(400).json({ ok: false, error: "Missing plugin name" });
       if (!/^[A-Za-z0-9_-]+$/.test(name)) return res.status(400).json({ ok: false, error: "Invalid plugin name" });
       const r = await runCmd(OPENCLAW_NODE, clawArgs(["plugins", "enable", name]));
+      return res.status(r.code === 0 ? 200 : 500).json({ ok: r.code === 0, output: redactSecrets(r.output) });
+    }
+
+    // Generic openclaw.* fallback: convert dotted command to CLI args.
+    // e.g. "openclaw.channels.add" → ["channels", "add"]
+    if (cmd.startsWith("openclaw.")) {
+      const parts = cmd.slice("openclaw.".length).split(".").map((s) => s.replace(/_/g, "-"));
+      // Special case: "openclaw.version" → ["--version"]
+      const cliArgs = parts.length === 1 && parts[0] === "version" ? ["--version"] : parts;
+      if (arg) cliArgs.push(arg);
+      const r = await runCmd(OPENCLAW_NODE, clawArgs(cliArgs));
       return res.status(r.code === 0 ? 200 : 500).json({ ok: r.code === 0, output: redactSecrets(r.output) });
     }
 

@@ -26,10 +26,12 @@ export default function ConsolePanel() {
     const [running, setRunning] = useState(false);
 
     const handleRun = async () => {
+        // Normalize: "openclaw models list" → "openclaw.models.list"
+        const normalizedCmd = cmd.includes(" ") ? cmd.trim().replace(/\s+/g, ".") : cmd;
         setRunning(true);
-        setOutput(`Running ${cmd}...\n`);
+        setOutput(`Running ${normalizedCmd}...\n`);
         try {
-            const r = await runConsoleCmd(cmd, arg);
+            const r = await runConsoleCmd(normalizedCmd, arg);
             setOutput(r.output || JSON.stringify(r, null, 2));
         } catch (e) {
             setOutput((p) => p + `Error: ${e}\n`);

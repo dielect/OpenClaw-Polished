@@ -1,29 +1,26 @@
 import { useState, useEffect } from "react";
 import LoginPage from "./components/LoginPage";
-import StatusPanel from "./components/StatusPanel";
-import SetupPanel from "./components/SetupPanel";
+import DashboardPanel from "./components/DashboardPanel";
 import ConsolePanel from "./components/ConsolePanel";
 import ConfigPanel from "./components/ConfigPanel";
 import { useStatus } from "./hooks/useStatus";
 import { isAuthed, restoreAuth, clearAuth } from "./api";
 
 const NAV = [
-    { id: "status", label: "Status" },
-    { id: "setup", label: "Setup" },
-    { id: "console", label: "Terminal", requireConfigured: true },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "terminal", label: "Terminal", requireConfigured: true },
     { id: "config", label: "Config", requireConfigured: true },
 ];
 
 export default function App() {
     const [authed, setAuthed] = useState(() => restoreAuth() && isAuthed());
-    const [tab, setTab] = useState("status");
+    const [tab, setTab] = useState("dashboard");
     const status = useStatus(authed);
     const configured = status.data?.configured;
 
-    // If on a tab that requires configured state, fall back to status
     useEffect(() => {
         const item = NAV.find((n) => n.id === tab);
-        if (item?.requireConfigured && !configured) setTab("status");
+        if (item?.requireConfigured && !configured) setTab("dashboard");
     }, [configured, tab]);
 
     useEffect(() => {
@@ -36,6 +33,8 @@ export default function App() {
         return <LoginPage onLogin={() => setAuthed(true)} />;
     }
 
+    const isFullBleed = tab === "terminal" || tab === "config";
+
     return (
         <div className="flex h-screen bg-background text-foreground font-sans">
             {/* Sidebar */}
@@ -45,7 +44,7 @@ export default function App() {
                 </div>
                 <nav className="flex-1 py-2 px-3 space-y-1">
                     {NAV.map((item) => {
-                        const disabled = item.requireConfigured && !status.data?.configured;
+                        const disabled = item.requireConfigured && !configured;
                         return (
                             <button
                                 key={item.id}
@@ -75,19 +74,18 @@ export default function App() {
 
             {/* Main */}
             <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
-                {tab !== "console" && tab !== "config" && (
+                {!isFullBleed && (
                     <div className="h-14 flex items-center px-8 border-b border-border shrink-0">
                         <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
                     </div>
                 )}
-                {tab === "console" ? (
+                {tab === "terminal" ? (
                     <ConsolePanel />
                 ) : tab === "config" ? (
                     <ConfigPanel />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        {tab === "status" && <StatusPanel status={status} />}
-                        {tab === "setup" && <SetupPanel status={status} />}
+                        <DashboardPanel status={status} />
                     </div>
                 )}
             </main>

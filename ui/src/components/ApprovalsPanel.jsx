@@ -33,7 +33,7 @@ function PairingForm({ onLog }) {
     return (
         <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-4">
+                <div className="flex flex-col gap-3">
                     <Label>Channel</Label>
                     <div className="flex rounded-md border border-input bg-muted p-0.5 w-fit">
                         {CHANNELS.map((ch) => (
@@ -51,7 +51,7 @@ function PairingForm({ onLog }) {
                         ))}
                     </div>
                 </div>
-                <div className="space-y-4">
+                <div className="flex flex-col gap-3">
                     <Label>Pairing code</Label>
                     <Input
                         value={code}

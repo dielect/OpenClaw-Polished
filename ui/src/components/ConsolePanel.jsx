@@ -7,8 +7,6 @@ import { getTerminalWsUrl } from "../api";
 
 export default function ConsolePanel() {
     const containerRef = useRef(null);
-    const termRef = useRef(null);
-    const wsRef = useRef(null);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -18,18 +16,28 @@ export default function ConsolePanel() {
             fontSize: 13,
             fontFamily: "'IBM Plex Mono', 'Menlo', monospace",
             theme: {
-                background: "#09090b",
-                foreground: "#fafafa",
-                cursor: "#fafafa",
-                selectionBackground: "#27272a",
-                black: "#09090b",
-                red: "#ef4444",
-                green: "#22c55e",
-                yellow: "#eab308",
-                blue: "#3b82f6",
-                magenta: "#a855f7",
-                cyan: "#06b6d4",
+                background: "#ffffff",
+                foreground: "#0a0a0a",
+                cursor: "#0a0a0a",
+                cursorAccent: "#ffffff",
+                selectionBackground: "#e5e5e5",
+                selectionForeground: "#0a0a0a",
+                black: "#0a0a0a",
+                red: "#dc2626",
+                green: "#16a34a",
+                yellow: "#ca8a04",
+                blue: "#2563eb",
+                magenta: "#9333ea",
+                cyan: "#0891b2",
                 white: "#fafafa",
+                brightBlack: "#737373",
+                brightRed: "#ef4444",
+                brightGreen: "#22c55e",
+                brightYellow: "#eab308",
+                brightBlue: "#3b82f6",
+                brightMagenta: "#a855f7",
+                brightCyan: "#06b6d4",
+                brightWhite: "#ffffff",
             },
         });
 
@@ -38,15 +46,12 @@ export default function ConsolePanel() {
         term.loadAddon(new WebLinksAddon());
         term.open(containerRef.current);
         fitAddon.fit();
-        termRef.current = term;
 
         // Connect WebSocket
         const url = getTerminalWsUrl();
         const ws = new WebSocket(url);
-        wsRef.current = ws;
 
         ws.onopen = () => {
-            // Send initial size
             ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
         };
 
@@ -68,7 +73,6 @@ export default function ConsolePanel() {
             }
         });
 
-        // Handle resize
         const onResize = () => {
             fitAddon.fit();
             if (ws.readyState === WebSocket.OPEN) {
@@ -87,16 +91,9 @@ export default function ConsolePanel() {
     }, []);
 
     return (
-        <div className="h-[calc(100vh-7rem)] flex flex-col">
-            <div className="mb-3">
-                <p className="text-sm text-muted-foreground">
-                    Interactive terminal session. Run <code className="bg-muted px-1 rounded text-xs">openclaw</code> commands directly.
-                </p>
-            </div>
-            <div
-                ref={containerRef}
-                className="flex-1 rounded-lg border border-border overflow-hidden bg-[#09090b] p-1"
-            />
-        </div>
+        <div
+            ref={containerRef}
+            className="flex-1 p-2"
+        />
     );
 }

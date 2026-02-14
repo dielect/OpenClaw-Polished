@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Section, Card, CardContent, Button, Input, Label, Badge } from "./ui";
+import RichSelect from "./RichSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import { approvePairing, getPendingDevices, approveDevice } from "../api";
 
@@ -35,15 +36,7 @@ function PairingForm({ onLog }) {
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                     <Label>Channel</Label>
-                    <select
-                        value={channel}
-                        onChange={(e) => setChannel(e.target.value)}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-                    >
-                        {CHANNEL_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                    </select>
+                    <RichSelect value={channel} onChange={setChannel} options={CHANNEL_OPTIONS} placeholder="Select channel..." />
                 </div>
                 <div className="space-y-1.5">
                     <Label>Pairing code</Label>

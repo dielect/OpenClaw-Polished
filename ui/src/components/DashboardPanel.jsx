@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button, Card, CardContent, LogOutput } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
 import SetupForm from "./SetupForm";
@@ -30,7 +30,58 @@ function ActionCard({ icon, title, description, onClick, disabled, href }) {
     );
 }
 
-/* ── Import dialog (reused from StatusPanel) ── */
+/* ── Data dropdown menu (export / import) ── */
+function DataMenu({ onExport, onImport, exporting }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [open]);
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+            >
+                <span>📁</span> Data
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-50">
+                    <path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </button>
+            {open && (
+                <div className="absolute right-0 mt-1 w-44 rounded-md border border-border bg-card shadow-lg z-50 py-1 animate-in fade-in-0 zoom-in-95">
+                    <button
+                        type="button"
+                        onClick={() => { setOpen(false); onExport(); }}
+                        disabled={exporting}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                        <span className="text-base">📦</span>
+                        {exporting ? "Exporting..." : "Export backup"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setOpen(false); onImport(); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors cursor-pointer"
+                    >
+                        <span className="text-base">📥</span>
+                        Import backup
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ── Import dialog ── */
 function ImportDialog({ open, onClose, onDone }) {
     const fileRef = useRef(null);
     const [importing, setImporting] = useState(false);
@@ -145,35 +196,27 @@ export default function DashboardPanel({ status, onNavigateConfig }) {
                 <p className="text-sm text-destructive text-center">{error}</p>
             )}
 
-            {/* ── Configured: action cards ── */}
+            {/* ── Configured: action cards + data menu ── */}
             {configured && (
-                <div className="grid grid-cols-2 gap-4">
-                    <ActionCard
-                        icon="🚀"
-                        title="OpenClaw UI"
-                        description="Open the main interface"
-                        href="/openclaw"
-                    />
-                    <ActionCard
-                        icon="📦"
-                        title="Export Backup"
-                        description="Download a .tar.gz of your data"
-                        onClick={handleExport}
-                        disabled={exporting}
-                    />
-                    <ActionCard
-                        icon="📥"
-                        title="Import Backup"
-                        description="Restore from a backup file"
-                        onClick={() => setShowImport(true)}
-                    />
-                    <ActionCard
-                        icon="⚙️"
-                        title={showSetup ? "Hide Setup" : "Reconfigure"}
-                        description={showSetup ? "Collapse the setup form" : "Change provider, channels, or reset"}
-                        onClick={() => setShowSetup((v) => !v)}
-                    />
-                </div>
+                <>
+                    <div className="flex justify-end">
+                        <DataMenu onExport={handleExport} onImport={() => setShowImport(true)} exporting={exporting} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 -mt-6">
+                        <ActionCard
+                            icon="🚀"
+                            title="OpenClaw UI"
+                            description="Open the main interface"
+                            href="/openclaw"
+                        />
+                        <ActionCard
+                            icon="⚙️"
+                            title={showSetup ? "Hide Setup" : "Reconfigure"}
+                            description={showSetup ? "Collapse the setup form" : "Change provider, channels, or reset"}
+                            onClick={() => setShowSetup((v) => !v)}
+                        />
+                    </div>
+                </>
             )}
 
             {/* ── Quick config patches ── */}

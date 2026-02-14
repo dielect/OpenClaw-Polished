@@ -830,8 +830,13 @@ function extractDeviceRequestIds(text) {
   const s = String(text || "");
   const out = new Set();
 
+  // Common patterns: requestId=XYZ, requestId: XYZ, "requestId":"XYZ".
   for (const m of s.matchAll(/requestId\s*(?:=|:)\s*([A-Za-z0-9_-]{6,})/g)) out.add(m[1]);
   for (const m of s.matchAll(/"requestId"\s*:\s*"([A-Za-z0-9_-]{6,})"/g)) out.add(m[1]);
+
+  // CLI table output: bare UUIDs (v4) in table cells under "Pending" section.
+  const pendingSection = s.split(/Paired\b/)[0]; // only look before "Paired" section
+  for (const m of pendingSection.matchAll(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi)) out.add(m[1]);
 
   return Array.from(out);
 }

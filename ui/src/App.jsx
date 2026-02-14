@@ -94,19 +94,21 @@ export default function App() {
                     <div className="h-14 flex items-center justify-between px-8 border-b border-border shrink-0">
                         <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
                         {tab === "dashboard" && (
-                            <div className="flex items-center gap-3">
-                                {configured && status.data?.gatewayTarget && (
-                                    <span className="text-xs font-mono text-muted-foreground">{status.data.gatewayTarget}</span>
-                                )}
-                                {status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
-                                    <span className="text-xs font-mono text-muted-foreground">{status.data.openclawVersion}</span>
-                                )}
+                            <div className="flex items-center gap-5">
                                 <div className="flex items-center gap-2">
                                     <StatusLight active={configured} loading={status.loading} />
                                     <span className="text-xs font-medium text-muted-foreground">
                                         {status.loading ? "Connecting..." : configured ? "Running" : "Not configured"}
                                     </span>
                                 </div>
+                                {configured && status.data?.gatewayTarget && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
+                                        <span className="opacity-50">→</span>{status.data.gatewayTarget}
+                                    </span>
+                                )}
+                                {status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
+                                    <span className="text-xs font-mono text-muted-foreground/60">{status.data.openclawVersion}</span>
+                                )}
                             </div>
                         )}
                     </div>

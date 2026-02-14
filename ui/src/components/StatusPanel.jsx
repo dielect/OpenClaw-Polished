@@ -1,11 +1,19 @@
 import { useState, useRef } from "react";
 import { Section, Card, CardRow, Button, Badge, LogOutput, Code } from "./ui";
-import { importBackup } from "../api";
+import { importBackup, exportBackup } from "../api";
 
 export default function StatusPanel({ status }) {
     const { data, error, loading, refresh } = status;
     const [importLog, setImportLog] = useState("");
+    const [exporting, setExporting] = useState(false);
     const fileRef = useRef(null);
+
+    const handleExport = async () => {
+        setExporting(true);
+        try { await exportBackup(); }
+        catch (e) { alert(`Export failed: ${e.message}`); }
+        finally { setExporting(false); }
+    };
 
     const handleImport = async () => {
         const file = fileRef.current?.files?.[0];
@@ -67,9 +75,13 @@ export default function StatusPanel({ status }) {
                         )}
                     </CardRow>
                     <CardRow label="Export backup" description="Download a .tar.gz of your data">
-                        <a href="/setup/export" target="_blank" className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors">
-                            Download
-                        </a>
+                        <button
+                            onClick={handleExport}
+                            disabled={exporting}
+                            className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {exporting ? "Downloading..." : "Download"}
+                        </button>
                     </CardRow>
                 </Card>
             </Section>

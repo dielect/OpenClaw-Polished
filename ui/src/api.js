@@ -148,3 +148,14 @@ export function importBackup(file) {
         }).then((r) => r.text())
     );
 }
+export async function exportBackup() {
+    const res = await rawFetch("/setup/export");
+    if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `openclaw-backup-${new Date().toISOString().slice(0, 10)}.tar.gz`;
+    a.click();
+    URL.revokeObjectURL(url);
+}

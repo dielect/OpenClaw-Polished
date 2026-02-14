@@ -35,15 +35,15 @@ function PairingForm({ onLog }) {
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-3">
                     <Label>Channel</Label>
-                    <div className="flex rounded-md border border-input bg-muted p-0.5 w-fit">
+                    <div className="flex rounded-md border border-input overflow-hidden w-fit">
                         {CHANNELS.map((ch) => (
                             <button
                                 key={ch.value}
                                 type="button"
                                 onClick={() => setChannel(ch.value)}
-                                className={`px-3 py-1.5 text-sm rounded-sm transition-colors cursor-pointer ${channel === ch.value
-                                    ? "bg-background text-foreground shadow-sm font-medium"
-                                    : "text-muted-foreground hover:text-foreground"
+                                className={`px-3 py-1.5 text-sm transition-colors cursor-pointer ${channel === ch.value
+                                    ? "bg-primary text-primary-foreground font-medium"
+                                    : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                                     }`}
                             >
                                 {ch.label}

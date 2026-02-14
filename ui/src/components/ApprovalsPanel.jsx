@@ -4,20 +4,24 @@ import ConfirmDialog from "./ConfirmDialog";
 import { approvePairing, getPendingDevices, approveDevice } from "../api";
 
 /* ── Pairing Approve Form (replaces native prompt()) ── */
+const CHANNEL_OPTIONS = [
+    { value: "telegram", label: "Telegram" },
+    { value: "discord", label: "Discord" },
+];
+
 function PairingForm({ onLog }) {
-    const [channel, setChannel] = useState("");
+    const [channel, setChannel] = useState("telegram");
     const [code, setCode] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!channel.trim() || !code.trim()) return;
+        if (!channel || !code.trim()) return;
         setSubmitting(true);
-        onLog(`Approving pairing for ${channel.trim()}...`);
+        onLog(`Approving pairing for ${channel}...`);
         try {
-            const text = await approvePairing(channel.trim().toLowerCase(), code.trim());
+            const text = await approvePairing(channel, code.trim());
             onLog(text);
-            setChannel("");
             setCode("");
         } catch (err) {
             onLog(`Error: ${err}`);
@@ -31,11 +35,15 @@ function PairingForm({ onLog }) {
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                     <Label>Channel</Label>
-                    <Input
+                    <select
                         value={channel}
                         onChange={(e) => setChannel(e.target.value)}
-                        placeholder="telegram or discord"
-                    />
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                    >
+                        {CHANNEL_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="space-y-1.5">
                     <Label>Pairing code</Label>
@@ -47,7 +55,7 @@ function PairingForm({ onLog }) {
                     />
                 </div>
             </div>
-            <Button type="submit" size="sm" disabled={submitting || !channel.trim() || !code.trim()}>
+            <Button type="submit" size="sm" disabled={submitting || !code.trim()}>
                 {submitting ? "Approving..." : "Approve pairing"}
             </Button>
         </form>

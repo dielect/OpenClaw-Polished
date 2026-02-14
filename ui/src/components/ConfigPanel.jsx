@@ -1,15 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import Editor from "@monaco-editor/react";
+import Editor, { DiffEditor } from "@monaco-editor/react";
 import { Button, Badge } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
 import { getConfigRaw, saveConfigRaw } from "../api";
 
+const EDITOR_OPTIONS = {
+    minimap: { enabled: false },
+    fontSize: 13,
+    fontFamily: "'IBM Plex Mono', monospace",
+    lineNumbers: "on",
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    tabSize: 2,
+    formatOnPaste: true,
+    renderLineHighlight: "none",
+    overviewRulerLanes: 0,
+    hideCursorInOverviewRuler: true,
+    padding: { top: 12, bottom: 12 },
+    scrollbar: { vertical: "hidden", horizontal: "hidden" },
+};
+
 export default function ConfigPanel() {
+    const [original, setOriginal] = useState("");
     const [content, setContent] = useState("");
     const [configPath, setConfigPath] = useState("");
     const [exists, setExists] = useState(false);
     const [status, setStatus] = useState("");
     const [saving, setSaving] = useState(false);
+    const [diffMode, setDiffMode] = useState(false);
     const editorRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
@@ -17,17 +35,20 @@ export default function ConfigPanel() {
         setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
     }), []);
 
+    const hasChanges = content !== original;
+
     const load = async () => {
         setStatus("");
+        setDiffMode(false);
         try {
             const r = await getConfigRaw();
             const raw = r.content || "";
+            let formatted = raw;
             try {
-                const parsed = JSON.parse(raw);
-                setContent(JSON.stringify(parsed, null, 2));
-            } catch {
-                setContent(raw);
-            }
+                formatted = JSON.stringify(JSON.parse(raw), null, 2);
+            } catch { }
+            setOriginal(formatted);
+            setContent(formatted);
             setConfigPath(r.path || "");
             setExists(r.exists || false);
         } catch (e) {
@@ -51,13 +72,20 @@ export default function ConfigPanel() {
         setSaving(true);
         setStatus("Saving...");
         try {
-            const r = await saveConfigRaw(content);
-            setStatus(`Saved. Gateway restarted.`);
+            await saveConfigRaw(content);
+            setOriginal(content);
+            setDiffMode(false);
+            setStatus("Saved. Gateway restarted.");
         } catch (e) {
             setStatus(`Error: ${e}`);
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleDiscard = () => {
+        setContent(original);
+        setDiffMode(false);
     };
 
     return (
@@ -69,6 +97,7 @@ export default function ConfigPanel() {
                         {configPath || "openclaw.json"}
                     </span>
                     {!exists && <Badge variant="outline">new</Badge>}
+                    {hasChanges && <Badge variant="secondary">modified</Badge>}
                     {status && (
                         <span className={`text-xs truncate ${status.startsWith("Error") ? "text-destructive" : "text-muted-foreground"}`}>
                             — {status}
@@ -76,38 +105,53 @@ export default function ConfigPanel() {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                    {hasChanges && (
+                        <>
+                            <Button variant="ghost" size="sm" onClick={() => setDiffMode((v) => !v)}>
+                                {diffMode ? "Editor" : "Diff"}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={handleDiscard}>Discard</Button>
+                        </>
+                    )}
                     <Button variant="ghost" size="sm" onClick={load}>Reload</Button>
-                    <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving}>
+                    {!diffMode && <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>}
+                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
                         {saving ? "Saving..." : "Save"}
                     </Button>
                 </div>
             </div>
 
-            {/* Editor */}
+            {/* Editor / Diff */}
             <div className="flex-1 min-h-0">
-                <Editor
-                    height="100%"
-                    defaultLanguage="json"
-                    value={content}
-                    onChange={(v) => setContent(v || "")}
-                    onMount={(editor) => { editorRef.current = editor; }}
-                    options={{
-                        minimap: { enabled: false },
-                        fontSize: 13,
-                        fontFamily: "'IBM Plex Mono', monospace",
-                        lineNumbers: "on",
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                        tabSize: 2,
-                        formatOnPaste: true,
-                        renderLineHighlight: "none",
-                        overviewRulerLanes: 0,
-                        hideCursorInOverviewRuler: true,
-                        padding: { top: 12, bottom: 12 },
-                        scrollbar: { vertical: "hidden", horizontal: "hidden" },
-                    }}
-                />
+                {diffMode ? (
+                    <DiffEditor
+                        height="100%"
+                        language="json"
+                        original={original}
+                        modified={content}
+                        onMount={(editor) => {
+                            const modifiedEditor = editor.getModifiedEditor();
+                            modifiedEditor.onDidChangeModelContent(() => {
+                                setContent(modifiedEditor.getValue());
+                            });
+                        }}
+                        options={{
+                            ...EDITOR_OPTIONS,
+                            readOnly: false,
+                            originalEditable: false,
+                            renderSideBySide: true,
+                        }}
+                    />
+                ) : (
+                    <Editor
+                        height="100%"
+                        defaultLanguage="json"
+                        value={content}
+                        onChange={(v) => setContent(v || "")}
+                        onMount={(editor) => { editorRef.current = editor; }}
+                        options={EDITOR_OPTIONS}
+                    />
+                )}
             </div>
 
             {dialog && <ConfirmDialog open {...dialog} />}

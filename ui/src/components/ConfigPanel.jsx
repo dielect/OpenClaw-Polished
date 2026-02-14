@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Editor from "@monaco-editor/react";
-import { Section, Card, Button, LogOutput, Code, Badge } from "./ui";
+import { Button, Badge } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
 import { getConfigRaw, saveConfigRaw } from "../api";
 
@@ -8,22 +8,20 @@ export default function ConfigPanel() {
     const [content, setContent] = useState("");
     const [configPath, setConfigPath] = useState("");
     const [exists, setExists] = useState(false);
-    const [output, setOutput] = useState("");
+    const [status, setStatus] = useState("");
     const [saving, setSaving] = useState(false);
     const editorRef = useRef(null);
 
-    // Confirm dialog state
     const [dialog, setDialog] = useState(null);
     const showConfirm = useCallback((opts) => new Promise((resolve) => {
         setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
     }), []);
 
     const load = async () => {
-        setOutput("");
+        setStatus("");
         try {
             const r = await getConfigRaw();
             const raw = r.content || "";
-            // Try to pretty-print if valid JSON
             try {
                 const parsed = JSON.parse(raw);
                 setContent(JSON.stringify(parsed, null, 2));
@@ -33,16 +31,14 @@ export default function ConfigPanel() {
             setConfigPath(r.path || "");
             setExists(r.exists || false);
         } catch (e) {
-            setOutput(`Error loading: ${e}`);
+            setStatus(`Error loading: ${e}`);
         }
     };
 
     useEffect(() => { load(); }, []);
 
     const handleFormat = () => {
-        if (editorRef.current) {
-            editorRef.current.getAction("editor.action.formatDocument")?.run();
-        }
+        editorRef.current?.getAction("editor.action.formatDocument")?.run();
     };
 
     const handleSave = async () => {
@@ -53,65 +49,65 @@ export default function ConfigPanel() {
         });
         if (!ok) return;
         setSaving(true);
-        setOutput("Saving...\n");
+        setStatus("Saving...");
         try {
             const r = await saveConfigRaw(content);
-            setOutput(`Saved: ${r.path || ""}\nGateway restarted.`);
+            setStatus(`Saved. Gateway restarted.`);
         } catch (e) {
-            setOutput(`Error: ${e}`);
+            setStatus(`Error: ${e}`);
         } finally {
             setSaving(false);
         }
     };
 
-    const handleEditorMount = (editor) => {
-        editorRef.current = editor;
-    };
-
     return (
-        <div className="space-y-6">
-            <Section
-                title="Config editor"
-                description="Edit the full config file on disk. Saving creates a timestamped backup and restarts the gateway."
-            >
-                {configPath && (
-                    <div className="flex items-center gap-2 mb-3">
-                        <Code>{configPath}</Code>
-                        {!exists && <Badge variant="outline">not created yet</Badge>}
-                    </div>
-                )}
-                <Card className="overflow-hidden">
-                    <Editor
-                        height="400px"
-                        defaultLanguage="json"
-                        value={content}
-                        onChange={(v) => setContent(v || "")}
-                        onMount={handleEditorMount}
-                        options={{
-                            minimap: { enabled: false },
-                            fontSize: 13,
-                            fontFamily: "'IBM Plex Mono', monospace",
-                            lineNumbers: "on",
-                            scrollBeyondLastLine: false,
-                            automaticLayout: true,
-                            tabSize: 2,
-                            formatOnPaste: true,
-                            renderLineHighlight: "none",
-                            overviewRulerLanes: 0,
-                            hideCursorInOverviewRuler: true,
-                            padding: { top: 12, bottom: 12 },
-                        }}
-                    />
-                </Card>
-                <div className="flex items-center gap-2 mt-3">
-                    <Button variant="outline" size="sm" onClick={load}>Reload</Button>
-                    <Button variant="outline" size="sm" onClick={handleFormat}>Format</Button>
+        <div className="flex flex-col flex-1 min-h-0">
+            {/* Toolbar */}
+            <div className="h-11 flex items-center justify-between px-4 border-b border-border shrink-0 bg-background">
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-mono text-muted-foreground truncate">
+                        {configPath || "openclaw.json"}
+                    </span>
+                    {!exists && <Badge variant="outline">new</Badge>}
+                    {status && (
+                        <span className={`text-xs truncate ${status.startsWith("Error") ? "text-destructive" : "text-muted-foreground"}`}>
+                            — {status}
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={load}>Reload</Button>
+                    <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>
                     <Button size="sm" onClick={handleSave} disabled={saving}>
                         {saving ? "Saving..." : "Save"}
                     </Button>
                 </div>
-                <LogOutput>{output}</LogOutput>
-            </Section>
+            </div>
+
+            {/* Editor */}
+            <div className="flex-1 min-h-0">
+                <Editor
+                    height="100%"
+                    defaultLanguage="json"
+                    value={content}
+                    onChange={(v) => setContent(v || "")}
+                    onMount={(editor) => { editorRef.current = editor; }}
+                    options={{
+                        minimap: { enabled: false },
+                        fontSize: 13,
+                        fontFamily: "'IBM Plex Mono', monospace",
+                        lineNumbers: "on",
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        formatOnPaste: true,
+                        renderLineHighlight: "none",
+                        overviewRulerLanes: 0,
+                        hideCursorInOverviewRuler: true,
+                        padding: { top: 12, bottom: 12 },
+                    }}
+                />
+            </div>
 
             {dialog && <ConfirmDialog open {...dialog} />}
         </div>

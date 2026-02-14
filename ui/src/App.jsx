@@ -74,19 +74,20 @@ export default function App() {
             </aside>
 
             {/* Main */}
-            <main className="flex-1 overflow-y-auto flex flex-col">
-                {tab !== "console" && (
+            <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
+                {tab !== "console" && tab !== "config" && (
                     <div className="h-14 flex items-center px-8 border-b border-border shrink-0">
                         <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
                     </div>
                 )}
                 {tab === "console" ? (
                     <ConsolePanel />
+                ) : tab === "config" ? (
+                    <ConfigPanel />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
                         {tab === "status" && <StatusPanel status={status} />}
                         {tab === "setup" && <SetupPanel status={status} />}
-                        {tab === "config" && <ConfigPanel />}
                     </div>
                 )}
             </main>

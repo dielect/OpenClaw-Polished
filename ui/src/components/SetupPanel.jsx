@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Section, Card, CardContent, Button, Input, Select, Label, LogOutput, Separator } from "./ui";
 import RichSelect from "./RichSelect";
+import ConfirmDialog from "./ConfirmDialog";
 import { getAuthGroups, runSetup, resetSetup, approvePairing, getPendingDevices, approveDevice } from "../api";
 
 function isInteractiveOAuth(value, label) {
@@ -34,6 +35,12 @@ export default function SetupPanel({ status }) {
     // Devices
     const [devices, setDevices] = useState([]);
     const [devicesLog, setDevicesLog] = useState("");
+
+    // Confirm dialog state
+    const [dialog, setDialog] = useState(null);
+    const showConfirm = useCallback((opts) => new Promise((resolve) => {
+        setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
+    }), []);
 
     useEffect(() => {
         getAuthGroups().then((d) => {
@@ -76,7 +83,13 @@ export default function SetupPanel({ status }) {
     };
 
     const handleReset = async () => {
-        if (!confirm("Reset setup? This deletes the config file so onboarding can run again.")) return;
+        const ok = await showConfirm({
+            title: "Reset setup?",
+            description: "This deletes the config file so onboarding can run again.",
+            confirmLabel: "Reset",
+            variant: "destructive",
+        });
+        if (!ok) return;
         setLog("Resetting...\n");
         try {
             const text = await resetSetup();
@@ -113,7 +126,12 @@ export default function SetupPanel({ status }) {
     };
 
     const handleApproveDevice = async (id) => {
-        if (!confirm(`Approve device ${id}?`)) return;
+        const ok = await showConfirm({
+            title: "Approve device?",
+            description: `Device request: ${id}`,
+            confirmLabel: "Approve",
+        });
+        if (!ok) return;
         try {
             const r = await approveDevice(id);
             setDevicesLog(r.output || "Approved.");
@@ -272,6 +290,8 @@ export default function SetupPanel({ status }) {
                 ))}
                 {devicesLog && <p className="text-xs text-muted-foreground mt-2">{devicesLog}</p>}
             </Section>
+
+            {dialog && <ConfirmDialog open {...dialog} />}
         </div>
     );
 }

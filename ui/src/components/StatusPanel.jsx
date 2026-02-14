@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Section, Card, CardRow, Button, Badge, LogOutput, Code } from "./ui";
+import ConfirmDialog from "./ConfirmDialog";
 import { importBackup, exportBackup } from "../api";
 
 export default function StatusPanel({ status }) {
@@ -8,17 +9,32 @@ export default function StatusPanel({ status }) {
     const [exporting, setExporting] = useState(false);
     const fileRef = useRef(null);
 
+    // Confirm/alert dialog state
+    const [dialog, setDialog] = useState(null);
+    const showConfirm = useCallback((opts) => new Promise((resolve) => {
+        setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
+    }), []);
+    const showAlert = useCallback((title, description) => new Promise((resolve) => {
+        setDialog({ title, description, alertOnly: true, onCancel: () => { setDialog(null); resolve(); } });
+    }), []);
+
     const handleExport = async () => {
         setExporting(true);
         try { await exportBackup(); }
-        catch (e) { alert(`Export failed: ${e.message}`); }
+        catch (e) { await showAlert("Export failed", e.message); }
         finally { setExporting(false); }
     };
 
     const handleImport = async () => {
         const file = fileRef.current?.files?.[0];
-        if (!file) return alert("Pick a .tar.gz file first");
-        if (!confirm("Import backup? This overwrites files under /data and restarts the gateway.")) return;
+        if (!file) return showAlert("No file selected", "Pick a .tar.gz file first.");
+        const ok = await showConfirm({
+            title: "Import backup?",
+            description: "This overwrites files under /data and restarts the gateway.",
+            confirmLabel: "Import",
+            variant: "destructive",
+        });
+        if (!ok) return;
         setImportLog(`Uploading ${file.name} (${file.size} bytes)...\n`);
         try {
             const text = await importBackup(file);
@@ -99,6 +115,8 @@ export default function StatusPanel({ status }) {
                     {loading ? "Refreshing..." : "Refresh"}
                 </Button>
             </div>
+
+            {dialog && <ConfirmDialog open {...dialog} />}
         </div>
     );
 }

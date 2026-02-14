@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 // shadcn/ui-inspired primitives — hand-rolled, no dependency.
 
 export function PageTitle({ children, description }) {
@@ -70,16 +72,17 @@ const btnSizes = {
     icon: "h-9 w-9",
 };
 
-export function Button({ children, variant = "default", size = "default", className = "", ...props }) {
+export const Button = forwardRef(function Button({ children, variant = "default", size = "default", className = "", ...props }, ref) {
     return (
         <button
+            ref={ref}
             className={`${btnBase} ${btnVariants[variant] || btnVariants.default} ${btnSizes[size] || btnSizes.default} ${className}`}
             {...props}
         >
             {children}
         </button>
     );
-}
+});
 
 export function Input({ className = "", ...props }) {
     return (

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import { Section, Card, Button, LogOutput, Code, Badge } from "./ui";
+import ConfirmDialog from "./ConfirmDialog";
 import { getConfigRaw, saveConfigRaw } from "../api";
 
 export default function ConfigPanel() {
@@ -10,6 +11,12 @@ export default function ConfigPanel() {
     const [output, setOutput] = useState("");
     const [saving, setSaving] = useState(false);
     const editorRef = useRef(null);
+
+    // Confirm dialog state
+    const [dialog, setDialog] = useState(null);
+    const showConfirm = useCallback((opts) => new Promise((resolve) => {
+        setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
+    }), []);
 
     const load = async () => {
         setOutput("");
@@ -39,7 +46,12 @@ export default function ConfigPanel() {
     };
 
     const handleSave = async () => {
-        if (!confirm("Save config and restart gateway? A timestamped backup will be created.")) return;
+        const ok = await showConfirm({
+            title: "Save config?",
+            description: "This will save the config and restart the gateway. A timestamped backup will be created.",
+            confirmLabel: "Save",
+        });
+        if (!ok) return;
         setSaving(true);
         setOutput("Saving...\n");
         try {
@@ -100,6 +112,8 @@ export default function ConfigPanel() {
                 </div>
                 <LogOutput>{output}</LogOutput>
             </Section>
+
+            {dialog && <ConfirmDialog open {...dialog} />}
         </div>
     );
 }

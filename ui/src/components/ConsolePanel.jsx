@@ -46,6 +46,7 @@ export default function ConsolePanel() {
         term.loadAddon(new WebLinksAddon());
         term.open(containerRef.current);
         fitAddon.fit();
+        term.focus();
 
         // Connect WebSocket
         const url = getTerminalWsUrl();

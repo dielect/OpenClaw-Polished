@@ -57,10 +57,14 @@ export default function StatusPanel({ status }) {
 
             <Section title="Quick links">
                 <Card>
-                    <CardRow label="OpenClaw UI" description="Open the main interface">
-                        <a href="/openclaw" target="_blank" className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors">
-                            Open
-                        </a>
+                    <CardRow label="OpenClaw UI" description={data?.configured ? "Open the main interface" : "Run setup first to enable"}>
+                        {data?.configured ? (
+                            <a href="/openclaw" target="_blank" className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors">
+                                Open
+                            </a>
+                        ) : (
+                            <span className="text-sm text-muted-foreground">Not available</span>
+                        )}
                     </CardRow>
                     <CardRow label="Export backup" description="Download a .tar.gz of your data">
                         <a href="/setup/export" target="_blank" className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors">

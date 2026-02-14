@@ -143,7 +143,7 @@ export function Separator() {
 export function LogOutput({ children }) {
     if (!children) return null;
     return (
-        <pre className="mt-3 rounded-md border border-border bg-muted p-4 text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-80 overflow-y-auto text-foreground/80">
+        <pre className="mt-3 rounded-md border border-border bg-muted p-4 text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-[calc(100vh-16rem)] overflow-y-auto text-foreground/80">
             {children}
         </pre>
     );

@@ -1306,14 +1306,34 @@ const RESTRICTED_SHELL_UNSAFE = /[&|;`$(){}!<>\\#\n\r"']/;
 function handleRestrictedTerminal(ws) {
   let inputBuf = "";
   let cols = 80;
+  let rows = 24;
+  let activePty = null;
 
   const PROMPT = "\x1b[32mopenclaw\x1b[0m $ ";
-
   const writePrompt = () => ws.send(PROMPT);
 
   ws.send("\x1b[90m[Restricted terminal — only openclaw and gateway commands allowed]\x1b[0m\r\n");
   ws.send("\x1b[90mSet TERMINAL_FULL_ACCESS=true for a full shell.\x1b[0m\r\n\r\n");
   writePrompt();
+
+  function spawnRestrictedCmd(cmd, args) {
+    activePty = pty.spawn(cmd, args, {
+      name: "xterm-256color",
+      cols,
+      rows,
+      cwd: STATE_DIR,
+      env: { ...process.env, TERM: "xterm-256color" },
+    });
+
+    activePty.onData((data) => {
+      try { ws.send(data); } catch { }
+    });
+
+    activePty.onExit(() => {
+      activePty = null;
+      writePrompt();
+    });
+  }
 
   ws.on("message", async (msg) => {
     const str = msg.toString();
@@ -1323,27 +1343,30 @@ function handleRestrictedTerminal(ws) {
       const parsed = JSON.parse(str);
       if (parsed.type === "resize" && parsed.cols && parsed.rows) {
         cols = Math.max(1, parsed.cols);
+        rows = Math.max(1, parsed.rows);
+        if (activePty) activePty.resize(cols, rows);
         return;
       }
     } catch { /* not JSON */ }
 
+    // If a PTY command is running, forward input to it
+    if (activePty) {
+      activePty.write(str);
+      return;
+    }
+
+    // Line-editing mode (prompt)
     for (const ch of str) {
       if (ch === "\r" || ch === "\n") {
-        // Execute command
         ws.send("\r\n");
         const line = inputBuf.trim();
         inputBuf = "";
 
-        if (!line) {
-          writePrompt();
-          continue;
-        }
+        if (!line) { writePrompt(); continue; }
 
-        // Parse: split on spaces, first token is the command
         const parts = line.split(/\s+/);
         const base = parts[0].toLowerCase();
 
-        // Allow "openclaw ..." or "gateway.*" dotted commands
         const isOpenclaw = base === "openclaw" && parts.length >= 2;
         const isGatewayCmd = /^gateway\.(restart|stop|start)$/.test(base);
 
@@ -1353,7 +1376,6 @@ function handleRestrictedTerminal(ws) {
           continue;
         }
 
-        // Safety: reject shell metacharacters in the entire line
         if (RESTRICTED_SHELL_UNSAFE.test(line)) {
           ws.send("\x1b[31mInvalid characters detected. Shell operators are not allowed.\x1b[0m\r\n");
           writePrompt();
@@ -1361,7 +1383,6 @@ function handleRestrictedTerminal(ws) {
         }
 
         if (isGatewayCmd) {
-          // Handle gateway commands inline
           try {
             if (base === "gateway.restart") {
               await restartGateway();
@@ -1384,40 +1405,31 @@ function handleRestrictedTerminal(ws) {
           continue;
         }
 
-        // openclaw command: parts[0] is "openclaw", rest are args
-        const cliArgs = parts.slice(1);
-        try {
-          const r = await runCmd(OPENCLAW_NODE, clawArgs(cliArgs));
-          const output = redactSecrets(r.output || "");
-          // Convert \n to \r\n for xterm
-          ws.send(output.replace(/\n/g, "\r\n"));
-          if (!output.endsWith("\n")) ws.send("\r\n");
-        } catch (e) {
-          ws.send(`\x1b[31mError: ${String(e)}\x1b[0m\r\n`);
-        }
-        writePrompt();
+        // openclaw command — spawn in a real PTY for interactive TUI support
+        const cliArgs = clawArgs(parts.slice(1));
+        spawnRestrictedCmd(OPENCLAW_NODE, cliArgs);
       } else if (ch === "\x7f" || ch === "\b") {
-        // Backspace
         if (inputBuf.length > 0) {
           inputBuf = inputBuf.slice(0, -1);
           ws.send("\b \b");
         }
       } else if (ch === "\x03") {
-        // Ctrl+C
         inputBuf = "";
         ws.send("^C\r\n");
         writePrompt();
       } else if (ch === "\x15") {
-        // Ctrl+U — clear line
         const clearSeq = "\b \b".repeat(inputBuf.length);
         ws.send(clearSeq);
         inputBuf = "";
       } else if (ch >= " ") {
-        // Printable character
         inputBuf += ch;
         ws.send(ch);
       }
     }
+  });
+
+  ws.on("close", () => {
+    if (activePty) { try { activePty.kill(); } catch { } activePty = null; }
   });
 }
 

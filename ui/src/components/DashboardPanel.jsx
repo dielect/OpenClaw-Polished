@@ -4,22 +4,6 @@ import ConfirmDialog from "./ConfirmDialog";
 import SetupForm from "./SetupForm";
 import { importBackup, exportBackup } from "../api";
 
-/* ── Animated status indicator ── */
-function StatusLight({ active, loading }) {
-    if (loading) {
-        return (
-            <span className="relative flex h-3.5 w-3.5">
-                <span className="absolute inset-0 rounded-full bg-muted-foreground/30 animate-pulse" />
-            </span>
-        );
-    }
-    return (
-        <span className="relative flex h-3.5 w-3.5">
-            {active && <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-50" />}
-            <span className={`relative inline-flex h-3.5 w-3.5 rounded-full ${active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
-        </span>
-    );
-}
 
 /* ── Quick-action card (big clickable tile) ── */
 function ActionCard({ icon, title, description, onClick, disabled, href }) {
@@ -121,25 +105,11 @@ export default function DashboardPanel({ status }) {
         finally { setExporting(false); }
     };
 
-    const version = data?.openclawVersion;
-    const versionOk = version && version.length <= 50;
-
     return (
         <div className="space-y-10">
-            {/* ── Hero: status indicator ── */}
-            <div className="flex flex-col items-center text-center pt-4">
-                <StatusLight active={configured} loading={loading} />
-                <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-                    {loading ? "Connecting..." : configured ? "Running" : "Ready to configure"}
-                </h1>
-                {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-                {versionOk && (
-                    <p className="mt-1 text-xs text-muted-foreground font-mono">{version}</p>
-                )}
-                {configured && data?.gatewayTarget && (
-                    <p className="mt-0.5 text-xs text-muted-foreground font-mono">{data.gatewayTarget}</p>
-                )}
-            </div>
+            {error && (
+                <p className="text-sm text-destructive text-center">{error}</p>
+            )}
 
             {/* ── Configured: action cards ── */}
             {configured && (

@@ -6,6 +6,22 @@ import ConfigPanel from "./components/ConfigPanel";
 import { useStatus } from "./hooks/useStatus";
 import { isAuthed, restoreAuth, clearAuth } from "./api";
 
+function StatusLight({ active, loading }) {
+    if (loading) {
+        return (
+            <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inset-0 rounded-full bg-muted-foreground/30 animate-pulse" />
+            </span>
+        );
+    }
+    return (
+        <span className="relative flex h-2.5 w-2.5">
+            {active && <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-50" />}
+            <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+        </span>
+    );
+}
+
 const NAV = [
     { id: "dashboard", label: "Dashboard" },
     { id: "terminal", label: "Terminal", requireConfigured: true },
@@ -75,8 +91,24 @@ export default function App() {
             {/* Main */}
             <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
                 {!isFullBleed && (
-                    <div className="h-14 flex items-center px-8 border-b border-border shrink-0">
+                    <div className="h-14 flex items-center justify-between px-8 border-b border-border shrink-0">
                         <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
+                        {tab === "dashboard" && (
+                            <div className="flex items-center gap-3">
+                                {configured && status.data?.gatewayTarget && (
+                                    <span className="text-xs font-mono text-muted-foreground">{status.data.gatewayTarget}</span>
+                                )}
+                                {status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
+                                    <span className="text-xs font-mono text-muted-foreground">{status.data.openclawVersion}</span>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <StatusLight active={configured} loading={status.loading} />
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                        {status.loading ? "Connecting..." : configured ? "Running" : "Not configured"}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
                 {tab === "terminal" ? (

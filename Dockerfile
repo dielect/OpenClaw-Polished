@@ -20,10 +20,8 @@ RUN corepack enable
 
 WORKDIR /openclaw
 
-# Pin to a known-good ref (tag/branch). Override in Railway template settings if needed.
-# Using a released tag avoids build breakage when `main` temporarily references unpublished packages.
-ARG OPENCLAW_GIT_REF=v2026.2.9
-RUN git clone --depth 1 --branch "${OPENCLAW_GIT_REF}" https://github.com/openclaw/openclaw.git .
+# Clone from main branch.
+RUN git clone --depth 1 https://github.com/openclaw/openclaw.git .
 
 # Patch: relax version requirements for packages that may reference unpublished versions.
 # Apply to all extension package.json files to handle workspace protocol (workspace:*).
@@ -40,6 +38,13 @@ RUN pnpm ui:install && pnpm ui:build
 
 
 # Runtime image
+FROM node:22-bookworm AS ui-build
+WORKDIR /ui
+COPY ui/package.json ui/package-lock.json* ./
+RUN npm install
+COPY ui/ ./
+RUN npx vite build
+
 FROM node:22-bookworm
 ENV NODE_ENV=production
 
@@ -65,6 +70,7 @@ RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"'
   && chmod +x /usr/local/bin/openclaw
 
 COPY src ./src
+COPY --from=ui-build /ui/dist ./ui/dist
 
 # The wrapper listens on this port.
 ENV OPENCLAW_PUBLIC_PORT=8080

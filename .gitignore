@@ -7,6 +7,8 @@ npm-debug.log*
 
 # Build artifacts
 /dist
+ui/dist
+ui/node_modules
 
 # Backup exports
 *.tar.gz

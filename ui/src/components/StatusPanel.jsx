@@ -3,17 +3,70 @@ import { Section, Card, CardRow, Button, Badge, LogOutput, Code } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
 import { importBackup, exportBackup } from "../api";
 
+function ImportDialog({ open, onClose, onDone }) {
+    const fileRef = useRef(null);
+    const [importing, setImporting] = useState(false);
+    const [log, setLog] = useState("");
+
+    const handleImport = async () => {
+        const file = fileRef.current?.files?.[0];
+        if (!file) return;
+        setImporting(true);
+        setLog(`Uploading ${file.name} (${file.size} bytes)...\n`);
+        try {
+            const text = await importBackup(file);
+            setLog((p) => p + text + "\n");
+            onDone?.();
+        } catch (e) {
+            setLog((p) => p + `Error: ${e}\n`);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="fixed inset-0 bg-black/50" onClick={!importing ? onClose : undefined} />
+            <div className="relative z-50 w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
+                <h3 className="text-base font-semibold leading-none tracking-tight">Import backup</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    Select a .tar.gz file. This overwrites files under /data and restarts the gateway.
+                </p>
+                <div className="mt-4">
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept=".tar.gz,application/gzip"
+                        className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80 file:cursor-pointer"
+                    />
+                </div>
+                {log && (
+                    <pre className="mt-3 rounded-md border border-border bg-muted p-3 text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto text-foreground/80">
+                        {log}
+                    </pre>
+                )}
+                <div className="mt-4 flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={onClose} disabled={importing}>
+                        {log && !importing ? "Close" : "Cancel"}
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={handleImport} disabled={importing}>
+                        {importing ? "Importing..." : "Import"}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function StatusPanel({ status }) {
     const { data, error, loading, refresh } = status;
-    const [importLog, setImportLog] = useState("");
     const [exporting, setExporting] = useState(false);
-    const fileRef = useRef(null);
+    const [showImport, setShowImport] = useState(false);
 
-    // Confirm/alert dialog state
+    // Alert dialog state
     const [dialog, setDialog] = useState(null);
-    const showConfirm = useCallback((opts) => new Promise((resolve) => {
-        setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
-    }), []);
     const showAlert = useCallback((title, description) => new Promise((resolve) => {
         setDialog({ title, description, alertOnly: true, onCancel: () => { setDialog(null); resolve(); } });
     }), []);
@@ -23,26 +76,6 @@ export default function StatusPanel({ status }) {
         try { await exportBackup(); }
         catch (e) { await showAlert("Export failed", e.message); }
         finally { setExporting(false); }
-    };
-
-    const handleImport = async () => {
-        const file = fileRef.current?.files?.[0];
-        if (!file) return showAlert("No file selected", "Pick a .tar.gz file first.");
-        const ok = await showConfirm({
-            title: "Import backup?",
-            description: "This overwrites files under /data and restarts the gateway.",
-            confirmLabel: "Import",
-            variant: "destructive",
-        });
-        if (!ok) return;
-        setImportLog(`Uploading ${file.name} (${file.size} bytes)...\n`);
-        try {
-            const text = await importBackup(file);
-            setImportLog((p) => p + text + "\n");
-            refresh();
-        } catch (e) {
-            setImportLog((p) => p + `Error: ${e}\n`);
-        }
     };
 
     return (
@@ -99,15 +132,15 @@ export default function StatusPanel({ status }) {
                             {exporting ? "Downloading..." : "Download"}
                         </button>
                     </CardRow>
+                    <CardRow label="Import backup" description="Restore from a .tar.gz file">
+                        <button
+                            onClick={() => setShowImport(true)}
+                            className="text-sm font-medium underline underline-offset-4 hover:text-muted-foreground transition-colors cursor-pointer"
+                        >
+                            Import
+                        </button>
+                    </CardRow>
                 </Card>
-            </Section>
-
-            <Section title="Import backup" description="Restores into /data and restarts the gateway.">
-                <div className="flex items-center gap-3">
-                    <input ref={fileRef} type="file" accept=".tar.gz,application/gzip" className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80 file:cursor-pointer" />
-                    <Button variant="destructive" size="sm" onClick={handleImport}>Import</Button>
-                </div>
-                <LogOutput>{importLog}</LogOutput>
             </Section>
 
             <div>
@@ -116,6 +149,7 @@ export default function StatusPanel({ status }) {
                 </Button>
             </div>
 
+            <ImportDialog open={showImport} onClose={() => setShowImport(false)} onDone={refresh} />
             {dialog && <ConfirmDialog open {...dialog} />}
         </div>
     );

@@ -166,7 +166,7 @@ export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
                     <span className="text-xs font-mono text-muted-foreground truncate">
                         {configPath || "openclaw.json"}
                     </span>
-                    {!exists && <Badge variant="outline">new</Badge>}
+                    {!exists && <Badge variant="outline">not found — run setup first</Badge>}
                     {hasChanges && <Badge variant="secondary">modified</Badge>}
                     {status && (
                         <span className={`text-xs truncate ${status.startsWith("Error") ? "text-destructive" : "text-muted-foreground"}`}>
@@ -175,7 +175,7 @@ export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {hasChanges && (
+                    {hasChanges && exists && (
                         <>
                             <Button variant="ghost" size="sm" onClick={() => setDiffMode((v) => !v)}>
                                 {diffMode ? "Editor" : "Diff"}
@@ -184,8 +184,8 @@ export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
                         </>
                     )}
                     <Button variant="ghost" size="sm" onClick={load}>Reload</Button>
-                    {!diffMode && <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>}
-                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges}>
+                    {!diffMode && exists && <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>}
+                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges || !exists}>
                         {saving ? "Saving..." : "Save"}
                     </Button>
                 </div>
@@ -216,10 +216,10 @@ export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
                     <Editor
                         height="100%"
                         defaultLanguage="json"
-                        value={content}
-                        onChange={(v) => setContent(v || "")}
+                        value={exists ? content : ""}
+                        onChange={(v) => exists && setContent(v || "")}
                         onMount={(editor) => { editorRef.current = editor; }}
-                        options={EDITOR_OPTIONS}
+                        options={{ ...EDITOR_OPTIONS, readOnly: !exists }}
                     />
                 )}
             </div>

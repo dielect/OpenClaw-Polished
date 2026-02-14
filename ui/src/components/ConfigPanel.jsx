@@ -105,6 +105,7 @@ export default function ConfigPanel() {
                         overviewRulerLanes: 0,
                         hideCursorInOverviewRuler: true,
                         padding: { top: 12, bottom: 12 },
+                        scrollbar: { vertical: "hidden", horizontal: "hidden" },
                     }}
                 />
             </div>

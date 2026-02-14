@@ -465,9 +465,20 @@ const AUTH_GROUPS = [
   }
 ];
 
+// Cache slow CLI lookups that don't change at runtime.
+let _cachedVersion = null;
+let _cachedChannelsHelp = null;
+
 app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
-  const version = await runCmd(OPENCLAW_NODE, clawArgs(["--version"]));
-  const channelsHelp = await runCmd(OPENCLAW_NODE, clawArgs(["channels", "add", "--help"]));
+  // Run both in parallel; cache results since they don't change.
+  const [version, channelsHelp] = await Promise.all([
+    _cachedVersion
+      ? Promise.resolve(_cachedVersion)
+      : runCmd(OPENCLAW_NODE, clawArgs(["--version"])).then((r) => { _cachedVersion = r; return r; }),
+    _cachedChannelsHelp
+      ? Promise.resolve(_cachedChannelsHelp)
+      : runCmd(OPENCLAW_NODE, clawArgs(["channels", "add", "--help"])).then((r) => { _cachedChannelsHelp = r; return r; }),
+  ]);
 
   res.json({
     configured: isConfigured(),

@@ -110,9 +110,15 @@ export default function App() {
                         {tab === "dashboard" && (
                             <div className="flex items-center gap-5">
                                 <div className="flex items-center gap-2">
-                                    <StatusLight active={configured} loading={status.loading} />
+                                    <StatusLight active={configured && status.data?.gatewayReachable} loading={status.loading} />
                                     <span className="text-xs font-medium text-muted-foreground">
-                                        {status.loading ? "Connecting..." : configured ? "Running" : "Not configured"}
+                                        {status.loading
+                                            ? "Connecting..."
+                                            : !configured
+                                                ? "Not configured"
+                                                : status.data?.gatewayReachable
+                                                    ? "Running"
+                                                    : "Unhealthy"}
                                     </span>
                                 </div>
                                 {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (

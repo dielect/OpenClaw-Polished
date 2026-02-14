@@ -75,6 +75,12 @@ export function getStatus() {
     return request("/setup/api/status");
 }
 
+export async function getHealth() {
+    const res = await fetch("/healthz");
+    if (!res.ok) return { ok: false, gateway: { reachable: false } };
+    return res.json();
+}
+
 export function getAuthGroups() {
     return request("/setup/api/auth-groups");
 }

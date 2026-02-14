@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getStatus } from "../api";
+import { getStatus, getHealth } from "../api";
 
 export function useStatus(authed) {
     const [data, setData] = useState(null);
@@ -9,9 +9,12 @@ export function useStatus(authed) {
     const refresh = useCallback(() => {
         if (!authed) return;
         setLoading(true);
-        getStatus()
-            .then((d) => {
-                setData(d);
+        Promise.all([getStatus(), getHealth()])
+            .then(([status, health]) => {
+                setData({
+                    ...status,
+                    gatewayReachable: health?.gateway?.reachable ?? false,
+                });
                 setError(null);
             })
             .catch((e) => setError(String(e)))

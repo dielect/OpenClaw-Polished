@@ -40,7 +40,7 @@ export default function ConsolePanel() {
 
     return (
         <div className="space-y-6">
-            <Section title="Debug console" description="Run allowlisted commands for debugging and recovery.">
+            <Section title="Commands" description="Run preset or custom commands for debugging and recovery.">
                 <Card>
                     <CardContent className="space-y-3">
                         <div className="flex items-end gap-2">
@@ -51,6 +51,7 @@ export default function ConsolePanel() {
                                     onChange={setCmd}
                                     options={COMMANDS}
                                     placeholder="Search commands..."
+                                    freeSolo
                                 />
                             </div>
                             <div className="flex-1 space-y-1.5">

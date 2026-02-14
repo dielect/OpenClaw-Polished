@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Section, Card, CardContent, Button, Input, Label, Badge } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
 import { approvePairing, getPendingDevices, approveDevice } from "../api";
@@ -100,12 +100,13 @@ export default function ApprovalsPanel() {
     const [devicesLoading, setDevicesLoading] = useState(false);
     const [devicesLog, setDevicesLog] = useState("");
     const [dialog, setDialog] = useState(null);
+    const didMount = useRef(false);
 
     const showConfirm = useCallback((opts) => new Promise((resolve) => {
         setDialog({ ...opts, onConfirm: () => { setDialog(null); resolve(true); }, onCancel: () => { setDialog(null); resolve(false); } });
     }), []);
 
-    const refreshDevices = async () => {
+    const refreshDevices = useCallback(async () => {
         setDevicesLoading(true);
         setDevicesLog("");
         try {
@@ -120,7 +121,15 @@ export default function ApprovalsPanel() {
         } finally {
             setDevicesLoading(false);
         }
-    };
+    }, []);
+
+    // Auto-fetch on mount
+    useEffect(() => {
+        if (!didMount.current) {
+            didMount.current = true;
+            refreshDevices();
+        }
+    }, [refreshDevices]);
 
     const handleApproveDevice = async (id) => {
         const ok = await showConfirm({
@@ -155,12 +164,21 @@ export default function ApprovalsPanel() {
             </Section>
 
             {/* Device pairing */}
-            <Section title="Device pairing" description="View and approve pending device pairing requests.">
-                <div className="flex items-center gap-2 mb-3">
-                    <Button variant="outline" size="sm" onClick={refreshDevices} disabled={devicesLoading}>
-                        {devicesLoading ? "Loading..." : "Refresh devices"}
-                    </Button>
+            <div className="mb-8">
+                <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-base font-semibold tracking-tight">Device pairing</h2>
+                    <button
+                        onClick={refreshDevices}
+                        disabled={devicesLoading}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                        <span className={devicesLoading ? "animate-spin" : ""}>↻</span>
+                        {devicesLoading ? "Refreshing..." : "Refresh"}
+                    </button>
                 </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                    Device list is not real-time. Use refresh to check for new requests.
+                </p>
 
                 {pending.length > 0 && (
                     <div className="mb-4">
@@ -189,7 +207,7 @@ export default function ApprovalsPanel() {
                 )}
 
                 {devicesLog && <p className="text-xs text-muted-foreground mt-2">{devicesLog}</p>}
-            </Section>
+            </div>
 
             {dialog && <ConfirmDialog open {...dialog} />}
         </div>

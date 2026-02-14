@@ -82,6 +82,10 @@ const GATEWAY_TARGET = `http://${INTERNAL_GATEWAY_HOST}:${INTERNAL_GATEWAY_PORT}
 const OPENCLAW_ENTRY = process.env.OPENCLAW_ENTRY?.trim() || "/openclaw/dist/entry.js";
 const OPENCLAW_NODE = process.env.OPENCLAW_NODE?.trim() || "node";
 
+// When true, the web terminal spawns a full PTY shell (bash).
+// When false (default), only openclaw/gateway commands are allowed — no shell injection possible.
+const TERMINAL_FULL_ACCESS = (process.env.TERMINAL_FULL_ACCESS || "").trim().toLowerCase() === "true";
+
 function clawArgs(args) {
   return [OPENCLAW_ENTRY, ...args];
 }
@@ -1285,7 +1289,128 @@ function authenticateWs(req) {
   } catch { return false; }
 }
 
-terminalWss.on("connection", (ws) => {
+// Shell metacharacters that must never appear in restricted-mode input.
+const RESTRICTED_SHELL_UNSAFE = /[&|;`$(){}!<>\\#\n\r"']/;
+
+function handleRestrictedTerminal(ws) {
+  let inputBuf = "";
+  let cols = 80;
+
+  const PROMPT = "\x1b[32mopenclaw\x1b[0m $ ";
+
+  const writePrompt = () => ws.send(PROMPT);
+
+  ws.send("\x1b[90m[Restricted terminal — only openclaw and gateway commands allowed]\x1b[0m\r\n");
+  ws.send("\x1b[90mSet TERMINAL_FULL_ACCESS=true for a full shell.\x1b[0m\r\n\r\n");
+  writePrompt();
+
+  ws.on("message", async (msg) => {
+    const str = msg.toString();
+
+    // Handle resize
+    try {
+      const parsed = JSON.parse(str);
+      if (parsed.type === "resize" && parsed.cols && parsed.rows) {
+        cols = Math.max(1, parsed.cols);
+        return;
+      }
+    } catch { /* not JSON */ }
+
+    for (const ch of str) {
+      if (ch === "\r" || ch === "\n") {
+        // Execute command
+        ws.send("\r\n");
+        const line = inputBuf.trim();
+        inputBuf = "";
+
+        if (!line) {
+          writePrompt();
+          continue;
+        }
+
+        // Parse: split on spaces, first token is the command
+        const parts = line.split(/\s+/);
+        const base = parts[0].toLowerCase();
+
+        // Allow "openclaw ..." or "gateway.*" dotted commands
+        const isOpenclaw = base === "openclaw" && parts.length >= 2;
+        const isGatewayCmd = /^gateway\.(restart|stop|start)$/.test(base);
+
+        if (!isOpenclaw && !isGatewayCmd) {
+          ws.send("\x1b[31mOnly openclaw and gateway.* commands are allowed.\x1b[0m\r\n");
+          writePrompt();
+          continue;
+        }
+
+        // Safety: reject shell metacharacters in the entire line
+        if (RESTRICTED_SHELL_UNSAFE.test(line)) {
+          ws.send("\x1b[31mInvalid characters detected. Shell operators are not allowed.\x1b[0m\r\n");
+          writePrompt();
+          continue;
+        }
+
+        if (isGatewayCmd) {
+          // Handle gateway commands inline
+          try {
+            if (base === "gateway.restart") {
+              await restartGateway();
+              ws.send("Gateway restarted.\r\n");
+            } else if (base === "gateway.stop") {
+              if (gatewayProc) {
+                try { gatewayProc.kill("SIGTERM"); } catch { }
+                await sleep(750);
+                gatewayProc = null;
+              }
+              ws.send("Gateway stopped.\r\n");
+            } else if (base === "gateway.start") {
+              const r = await ensureGatewayRunning();
+              ws.send(r.ok ? "Gateway started.\r\n" : `Gateway not started: ${r.reason}\r\n`);
+            }
+          } catch (e) {
+            ws.send(`\x1b[31mError: ${String(e)}\x1b[0m\r\n`);
+          }
+          writePrompt();
+          continue;
+        }
+
+        // openclaw command: parts[0] is "openclaw", rest are args
+        const cliArgs = parts.slice(1);
+        try {
+          const r = await runCmd(OPENCLAW_NODE, clawArgs(cliArgs));
+          const output = redactSecrets(r.output || "");
+          // Convert \n to \r\n for xterm
+          ws.send(output.replace(/\n/g, "\r\n"));
+          if (!output.endsWith("\n")) ws.send("\r\n");
+        } catch (e) {
+          ws.send(`\x1b[31mError: ${String(e)}\x1b[0m\r\n`);
+        }
+        writePrompt();
+      } else if (ch === "\x7f" || ch === "\b") {
+        // Backspace
+        if (inputBuf.length > 0) {
+          inputBuf = inputBuf.slice(0, -1);
+          ws.send("\b \b");
+        }
+      } else if (ch === "\x03") {
+        // Ctrl+C
+        inputBuf = "";
+        ws.send("^C\r\n");
+        writePrompt();
+      } else if (ch === "\x15") {
+        // Ctrl+U — clear line
+        const clearSeq = "\b \b".repeat(inputBuf.length);
+        ws.send(clearSeq);
+        inputBuf = "";
+      } else if (ch >= " ") {
+        // Printable character
+        inputBuf += ch;
+        ws.send(ch);
+      }
+    }
+  });
+}
+
+function handleFullTerminal(ws) {
   const shell = process.env.SHELL || "/bin/bash";
   const term = pty.spawn(shell, [], {
     name: "xterm-256color",
@@ -1305,7 +1430,6 @@ terminalWss.on("connection", (ws) => {
 
   ws.on("message", (msg) => {
     const str = msg.toString();
-    // Handle resize messages: JSON { type: "resize", cols, rows }
     try {
       const parsed = JSON.parse(str);
       if (parsed.type === "resize" && parsed.cols && parsed.rows) {
@@ -1319,6 +1443,14 @@ terminalWss.on("connection", (ws) => {
   ws.on("close", () => {
     try { term.kill(); } catch { }
   });
+}
+
+terminalWss.on("connection", (ws) => {
+  if (TERMINAL_FULL_ACCESS) {
+    handleFullTerminal(ws);
+  } else {
+    handleRestrictedTerminal(ws);
+  }
 });
 
 server.on("upgrade", async (req, socket, head) => {

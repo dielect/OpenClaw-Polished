@@ -115,13 +115,10 @@ export default function App() {
                                         {status.loading ? "Connecting..." : configured ? "Running" : "Not configured"}
                                     </span>
                                 </div>
-                                {configured && status.data?.gatewayTarget && (
+                                {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
                                     <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
-                                        <span className="opacity-50">→</span>{status.data.gatewayTarget}
+                                        {status.data.openclawVersion}
                                     </span>
-                                )}
-                                {status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
-                                    <span className="text-xs font-mono text-muted-foreground/60">{status.data.openclawVersion}</span>
                                 )}
                             </div>
                         )}

@@ -30,8 +30,8 @@ const NAV = [
     { id: "terminal", label: "Terminal" },
     {
         id: "files", label: "Files Config", children: [
-            { id: "file-config", label: "openclaw.json" },
-            { id: "file-env", label: ".env" },
+            { id: "file-config", label: "openclaw" },
+            { id: "file-env", label: "env" },
         ]
     },
     { id: "data", label: "Backup & Restore" },

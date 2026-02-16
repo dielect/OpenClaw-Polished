@@ -26,6 +26,7 @@ export default function SetupForm({ status }) {
     const [log, setLog] = useState("");
     const [running, setRunning] = useState(false);
     const [steps, setSteps] = useState([]); // { label, status: 'running'|'done'|'failed' }
+    const [setupDone, setSetupDone] = useState(false);
     const abortRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
@@ -80,6 +81,7 @@ export default function SetupForm({ status }) {
                 onDone: ({ ok, output }) => {
                     if (output) setLog((p) => p + (p ? "\n" : "") + output);
                     setRunning(false);
+                    if (ok) setSetupDone(true);
                     status.refresh();
                 },
                 onError: (err) => {
@@ -261,7 +263,7 @@ export default function SetupForm({ status }) {
                 )}
             </div>
 
-            {steps.length > 0 && (
+            {steps.length > 0 && !setupDone && (
                 <div className="space-y-1.5">
                     {steps.map((s) => (
                         <div key={s.label} className="flex items-center gap-2 text-sm">
@@ -274,7 +276,7 @@ export default function SetupForm({ status }) {
                 </div>
             )}
 
-            <LogOutput>{log}</LogOutput>
+            {!setupDone && <LogOutput>{log}</LogOutput>}
 
             {dialog && <ConfirmDialog open {...dialog} />}
         </div>

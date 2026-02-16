@@ -69,7 +69,7 @@ function PairingForm({ onLog }) {
 }
 
 /* ── Pending device request row ── */
-function PendingDeviceRow({ device, onApprove }) {
+function PendingDeviceRow({ device, onApprove, approving }) {
     return (
         <div className="flex items-start justify-between gap-4 px-4 py-3 border-b border-border last:border-b-0">
             <div className="min-w-0 flex-1 space-y-1">
@@ -84,8 +84,8 @@ function PendingDeviceRow({ device, onApprove }) {
                     {device.age && <span>Age: {device.age}</span>}
                 </div>
             </div>
-            <Button variant="default" size="sm" onClick={() => onApprove(device.requestId)} className="shrink-0">
-                Approve
+            <Button variant="default" size="sm" onClick={() => onApprove(device.requestId)} disabled={approving} className="shrink-0">
+                {approving ? "Approving..." : "Approve"}
             </Button>
         </div>
     );
@@ -113,6 +113,7 @@ export default function ApprovalsPanel() {
     const [paired, setPaired] = useState([]);
     const [devicesLoading, setDevicesLoading] = useState(false);
     const [devicesLog, setDevicesLog] = useState("");
+    const [approvingId, setApprovingId] = useState(null);
     const [dialog, setDialog] = useState(null);
     const didMount = useRef(false);
 
@@ -152,12 +153,15 @@ export default function ApprovalsPanel() {
             confirmLabel: "Approve",
         });
         if (!ok) return;
+        setApprovingId(id);
         try {
             const r = await approveDevice(id);
             setDevicesLog(r.output || "Approved.");
             refreshDevices();
         } catch (e) {
             setDevicesLog(`Error: ${e}`);
+        } finally {
+            setApprovingId(null);
         }
     };
 
@@ -201,7 +205,7 @@ export default function ApprovalsPanel() {
                         </h4>
                         <Card>
                             {pending.map((d) => (
-                                <PendingDeviceRow key={d.requestId} device={d} onApprove={handleApproveDevice} />
+                                <PendingDeviceRow key={d.requestId} device={d} onApprove={handleApproveDevice} approving={approvingId === d.requestId} />
                             ))}
                         </Card>
                     </div>

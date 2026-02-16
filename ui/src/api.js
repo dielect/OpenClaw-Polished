@@ -101,6 +101,54 @@ export function runSetup(payload) {
     });
 }
 
+/**
+ * Stream setup progress via SSE. Calls onStep/onStepDone/onLog/onDone as events arrive.
+ * Returns an abort function.
+ */
+export function runSetupStream(payload, { onStep, onStepDone, onLog, onDone, onError }) {
+    const controller = new AbortController();
+
+    rawFetch("/setup/api/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+    }).then(async (res) => {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+
+            const lines = buf.split("\n");
+            buf = lines.pop() || "";
+
+            let currentEvent = null;
+            for (const line of lines) {
+                if (line.startsWith("event: ")) {
+                    currentEvent = line.slice(7).trim();
+                } else if (line.startsWith("data: ") && currentEvent) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        if (currentEvent === "step") onStep?.(data);
+                        else if (currentEvent === "stepDone") onStepDone?.(data);
+                        else if (currentEvent === "log") onLog?.(data);
+                        else if (currentEvent === "done") onDone?.(data);
+                    } catch { /* ignore parse errors */ }
+                    currentEvent = null;
+                }
+            }
+        }
+    }).catch((err) => {
+        if (err.name !== "AbortError") onError?.(err);
+    });
+
+    return () => controller.abort();
+}
+
 export function runConsoleCmd(cmd, arg) {
     return request("/setup/api/console/run", {
         method: "POST",

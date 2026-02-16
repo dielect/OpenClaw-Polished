@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Section, Card, CardContent, Button, Input, Label, LogOutput, Separator } from "./ui";
 import RichSelect from "./RichSelect";
 import ConfirmDialog from "./ConfirmDialog";
-import { getAuthGroups, runSetup, resetSetup } from "../api";
+import { getAuthGroups, runSetupStream, resetSetup } from "../api";
 
 export default function SetupForm({ status }) {
     const [groups, setGroups] = useState([]);
@@ -25,6 +25,8 @@ export default function SetupForm({ status }) {
 
     const [log, setLog] = useState("");
     const [running, setRunning] = useState(false);
+    const [steps, setSteps] = useState([]); // { label, status: 'running'|'done'|'failed' }
+    const abortRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
     const showConfirm = useCallback((opts) => new Promise((resolve) => {
@@ -50,24 +52,43 @@ export default function SetupForm({ status }) {
         }
     }, [group, apiKeyChoices]);
 
-    const handleRun = async () => {
+    const handleRun = () => {
         setRunning(true);
-        setLog("Running setup...\n");
-        try {
-            const res = await runSetup({
+        setLog("");
+        setSteps([]);
+
+        const abort = runSetupStream(
+            {
                 flow, authChoice, authSecret,
                 telegramToken, discordToken, slackBotToken, slackAppToken,
                 customProviderId: customId, customProviderBaseUrl: customUrl,
                 customProviderApi: customApi, customProviderApiKeyEnv: customKeyEnv,
                 customProviderModelId: customModel,
-            });
-            setLog((p) => p + (res.output || JSON.stringify(res, null, 2)));
-            status.refresh();
-        } catch (e) {
-            setLog((p) => p + `Error: ${e}\n`);
-        } finally {
-            setRunning(false);
-        }
+            },
+            {
+                onStep: ({ label }) => {
+                    setSteps((prev) => [...prev, { label, status: "running" }]);
+                },
+                onStepDone: ({ label, ok }) => {
+                    setSteps((prev) =>
+                        prev.map((s) => s.label === label ? { ...s, status: ok ? "done" : "failed" } : s)
+                    );
+                },
+                onLog: ({ text }) => {
+                    setLog((p) => p + text);
+                },
+                onDone: ({ ok, output }) => {
+                    if (output) setLog((p) => p + (p ? "\n" : "") + output);
+                    setRunning(false);
+                    status.refresh();
+                },
+                onError: (err) => {
+                    setLog((p) => p + `\nError: ${err}\n`);
+                    setRunning(false);
+                },
+            },
+        );
+        abortRef.current = abort;
     };
 
     const handleReset = async () => {
@@ -234,6 +255,20 @@ export default function SetupForm({ status }) {
                 </Button>
                 <Button variant="ghost" onClick={handleReset}>Reset</Button>
             </div>
+
+            {steps.length > 0 && (
+                <div className="space-y-1.5">
+                    {steps.map((s) => (
+                        <div key={s.label} className="flex items-center gap-2 text-sm">
+                            {s.status === "running" && <span className="text-foreground animate-pulse">●</span>}
+                            {s.status === "done" && <span className="text-emerald-500">✓</span>}
+                            {s.status === "failed" && <span className="text-red-500">✗</span>}
+                            <span className={s.status === "running" ? "text-foreground" : "text-muted-foreground"}>{s.label}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <LogOutput>{log}</LogOutput>
 
             {dialog && <ConfirmDialog open {...dialog} />}

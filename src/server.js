@@ -1418,7 +1418,9 @@ const server = app.listen(PORT, "0.0.0.0", async () => {
 
   // Harden state dir for OpenClaw and avoid missing credentials dir on fresh volumes.
   try {
-    fs.mkdirSync(path.join(STATE_DIR, "credentials"), { recursive: true });
+    const credDir = path.join(STATE_DIR, "credentials");
+    fs.mkdirSync(credDir, { recursive: true, mode: 0o700 });
+    fs.chmodSync(credDir, 0o700);
   } catch { }
   try {
     fs.chmodSync(STATE_DIR, 0o700);

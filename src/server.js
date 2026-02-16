@@ -1447,6 +1447,21 @@ app.use(async (req, res) => {
     }
   }
 
+  // The gateway serves its SPA under /openclaw but static assets (favicon, fonts,
+  // CSS/JS bundles, images …) live at the root.  The SPA's HTML uses relative paths
+  // (e.g. ./favicon.svg), so when the browser is on /openclaw/chat the browser
+  // resolves them to /openclaw/favicon.svg — which hits the SPA fallback instead of
+  // the real file.
+  //
+  // Fix: if the path looks like a static asset (has a common file extension) under
+  // /openclaw, strip the /openclaw prefix so the gateway serves the actual file.
+  // This avoids hard-coding specific filenames from the upstream project.
+  const STATIC_EXT = /\.(svg|ico|png|jpe?g|gif|webp|avif|css|js|mjs|map|woff2?|ttf|eot|json|webmanifest)$/i;
+  if (req.path.startsWith("/openclaw/") && STATIC_EXT.test(req.path)) {
+    const stripped = req.path.slice("/openclaw".length);
+    req.url = stripped + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+  }
+
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
 

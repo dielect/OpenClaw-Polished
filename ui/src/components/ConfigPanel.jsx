@@ -27,13 +27,13 @@ const FILE_DEFS = {
 
 /* ── .env autocomplete definitions ── */
 const ENV_KEYS = [
-    { key: "OPENCLAW_GATEWAY_TOKEN", detail: "Gateway auth token", section: "Gateway" },
-    { key: "OPENCLAW_GATEWAY_PASSWORD", detail: "Alternative gateway auth password", section: "Gateway" },
-    { key: "OPENCLAW_STATE_DIR", detail: "State directory (default: ~/.openclaw)", section: "Gateway" },
-    { key: "OPENCLAW_CONFIG_PATH", detail: "Config file path", section: "Gateway" },
-    { key: "OPENCLAW_HOME", detail: "Home directory override", section: "Gateway" },
-    { key: "OPENCLAW_LOAD_SHELL_ENV", detail: "Import missing keys from login shell", section: "Gateway" },
-    { key: "OPENCLAW_SHELL_ENV_TIMEOUT_MS", detail: "Shell env import timeout", section: "Gateway" },
+    // { key: "OPENCLAW_GATEWAY_TOKEN", detail: "Gateway auth token", section: "Gateway" },
+    // { key: "OPENCLAW_GATEWAY_PASSWORD", detail: "Alternative gateway auth password", section: "Gateway" },
+    // { key: "OPENCLAW_STATE_DIR", detail: "State directory (default: ~/.openclaw)", section: "Gateway" },
+    // { key: "OPENCLAW_CONFIG_PATH", detail: "Config file path", section: "Gateway" },
+    // { key: "OPENCLAW_HOME", detail: "Home directory override", section: "Gateway" },
+    // { key: "OPENCLAW_LOAD_SHELL_ENV", detail: "Import missing keys from login shell", section: "Gateway" },
+    // { key: "OPENCLAW_SHELL_ENV_TIMEOUT_MS", detail: "Shell env import timeout", section: "Gateway" },
     { key: "OPENAI_API_KEY", detail: "OpenAI API key", section: "Model providers" },
     { key: "ANTHROPIC_API_KEY", detail: "Anthropic API key", section: "Model providers" },
     { key: "GEMINI_API_KEY", detail: "Google Gemini API key", section: "Model providers" },
@@ -42,6 +42,7 @@ const ENV_KEYS = [
     { key: "AI_GATEWAY_API_KEY", detail: "AI Gateway API key", section: "Model providers" },
     { key: "MINIMAX_API_KEY", detail: "MiniMax API key", section: "Model providers" },
     { key: "SYNTHETIC_API_KEY", detail: "Synthetic API key", section: "Model providers" },
+    { key: "GROQ_API_KEY", detail: "groq api key", section: "Model providers" },
 
     { key: "TELEGRAM_BOT_TOKEN", detail: "Telegram bot token", section: "Channels" },
     { key: "DISCORD_BOT_TOKEN", detail: "Discord bot token", section: "Channels" },

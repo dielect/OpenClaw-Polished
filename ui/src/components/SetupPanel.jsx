@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button } from "./ui";
+import Lottie from "lottie-react";
+import lobsterAnimation from "../assets/lobster.json";
 import SetupForm from "./SetupForm";
 
 
@@ -64,26 +65,18 @@ const QUICK_PATCHES = [
 ];
 
 /* ── Main Setup ── */
-export default function SetupPanel({ status, onNavigateConfig, onNavigateData }) {
-    const { data, error, loading, refresh } = status;
+export default function SetupPanel({ status, onNavigateConfig }) {
+    const { data, error, loading } = status;
     const configured = data?.configured;
 
     const [showSetup, setShowSetup] = useState(false);
 
-    /* First load — show skeleton instead of flashing the setup form */
+    /* First load — show Lottie animation instead of skeleton */
     if (loading && !data) {
         return (
-            <div className="space-y-6 animate-pulse">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="h-32 rounded-xl border border-border bg-muted/40" />
-                    <div className="h-32 rounded-xl border border-border bg-muted/40" />
-                </div>
-                <div className="h-4 w-1/3 rounded bg-muted/40" />
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="h-24 rounded-lg border border-border bg-muted/40" />
-                    <div className="h-24 rounded-lg border border-border bg-muted/40" />
-                    <div className="h-24 rounded-lg border border-border bg-muted/40" />
-                </div>
+            <div className="flex flex-col items-center justify-center py-24">
+                <Lottie animationData={lobsterAnimation} loop autoplay style={{ width: 200, height: 200 }} />
+                <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
             </div>
         );
     }
@@ -143,24 +136,7 @@ export default function SetupPanel({ status, onNavigateConfig, onNavigateData })
                 </div>
             )}
 
-            {/* ── Not configured: import as alternative ── */}
-            {!configured && (
-                <div className="flex justify-center">
-                    <button
-                        onClick={onNavigateData}
-                        className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors cursor-pointer"
-                    >
-                        Or restore from a backup
-                    </button>
-                </div>
-            )}
 
-            {/* ── Footer toolbar ── */}
-            <div className="flex justify-center">
-                <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
-                    {loading ? "Refreshing..." : "↻ Refresh"}
-                </Button>
-            </div>
         </div>
     );
 }

@@ -44,10 +44,6 @@ export default function App() {
         setTab("config");
     }, []);
 
-    const navigateToData = useCallback(() => {
-        setTab("data");
-    }, []);
-
     // (no longer gating tabs on configured state)
 
     useEffect(() => {
@@ -131,7 +127,7 @@ export default function App() {
                     <DataPanel status={status} />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        <SetupPanel status={status} onNavigateConfig={navigateToConfig} onNavigateData={navigateToData} />
+                        <SetupPanel status={status} onNavigateConfig={navigateToConfig} />
                     </div>
                 )}
             </main>

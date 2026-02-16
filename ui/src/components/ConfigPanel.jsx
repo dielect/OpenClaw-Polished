@@ -17,9 +17,7 @@ const EDITOR_OPTIONS = {
     overviewRulerLanes: 0,
     hideCursorInOverviewRuler: true,
     padding: { top: 12, bottom: 12 },
-    scrollbar: { vertical: "hidden", horizontal: "hidden" },
-    bracketPairColorization: { enabled: true },
-    guides: { bracketPairs: true },
+    scrollbar: { vertical: "hidden", horizontal: "hidden" }
 };
 
 const FILE_DEFS = {

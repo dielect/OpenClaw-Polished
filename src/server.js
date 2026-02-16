@@ -714,7 +714,7 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
       let skipReason = null;
       if (!/^[A-Za-z0-9_-]+$/.test(providerId)) skipReason = "invalid provider id";
       else if (!/^https?:\/\//.test(baseUrl)) skipReason = "baseUrl must start with http(s)://";
-      else if (api !== "openai-completions" && api !== "openai-responses") skipReason = "api must be openai-completions or openai-responses";
+      else if (!["openai-completions", "openai-responses", "anthropic-messages"].includes(api)) skipReason = "api must be openai-completions, openai-responses, or anthropic-messages";
       else if (apiKeyEnv && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(apiKeyEnv)) skipReason = "invalid api key env var name";
 
       if (skipReason) {

@@ -190,6 +190,7 @@ export default function SetupForm({ status }) {
                                         <RichSelect value={customApi} onChange={setCustomApi} options={[
                                             { value: "openai-completions", label: "openai-completions", description: "Chat Completions API" },
                                             { value: "openai-responses", label: "openai-responses", description: "Responses API" },
+                                            { value: "anthropic-messages", label: "anthropic-messages", description: "Anthropic Messages API" },
                                         ]} />
                                     </div>
                                     <div className="space-y-2">

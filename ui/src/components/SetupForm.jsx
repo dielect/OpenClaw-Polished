@@ -4,17 +4,13 @@ import RichSelect from "./RichSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import { getAuthGroups, runSetup, resetSetup } from "../api";
 
-function isInteractiveOAuth(value, label) {
-    return /OAuth/i.test(label) || /cli|codex|portal/i.test(value);
-}
-
 export default function SetupForm({ status }) {
     const [groups, setGroups] = useState([]);
+    const [apiKeyChoices, setApiKeyChoices] = useState(new Set());
     const [group, setGroup] = useState("");
     const [authChoice, setAuthChoice] = useState("");
     const [authSecret, setAuthSecret] = useState("");
     const [flow, setFlow] = useState("quickstart");
-    const [showAdvanced, setShowAdvanced] = useState(false);
 
     const [telegramToken, setTelegramToken] = useState("");
     const [discordToken, setDiscordToken] = useState("");
@@ -39,21 +35,20 @@ export default function SetupForm({ status }) {
         getAuthGroups().then((d) => {
             const g = d.authGroups || [];
             setGroups(g);
+            setApiKeyChoices(new Set(d.apiKeyChoices || []));
             if (g.length) setGroup(g[0].value);
         }).catch(() => { });
     }, []);
 
     const currentGroup = groups.find((g) => g.value === group);
-    const options = (currentGroup?.options || []).filter(
-        (o) => showAdvanced || !isInteractiveOAuth(o.value, o.label)
-    );
+    const options = currentGroup?.options || [];
 
     useEffect(() => {
-        if (options.length && !options.find((o) => o.value === authChoice)) {
-            const nonInteractive = options.find((o) => !isInteractiveOAuth(o.value, o.label));
-            setAuthChoice(nonInteractive?.value || options[0]?.value || "");
+        if (options.length && !options.find((o) => o.value === authChoice && apiKeyChoices.has(o.value))) {
+            const enabled = options.find((o) => apiKeyChoices.has(o.value));
+            setAuthChoice(enabled?.value || "");
         }
-    }, [group, showAdvanced]);
+    }, [group, apiKeyChoices]);
 
     const handleRun = async () => {
         setRunning(true);
@@ -99,7 +94,8 @@ export default function SetupForm({ status }) {
 
     const authOptions = options.map((o) => ({
         value: o.value, label: o.label,
-        description: isInteractiveOAuth(o.value, o.label) ? "Interactive OAuth" : undefined,
+        description: o.hint || (!apiKeyChoices.has(o.value) ? "Interactive (not supported here)" : undefined),
+        disabled: !apiKeyChoices.has(o.value),
     }));
 
     return (
@@ -112,13 +108,7 @@ export default function SetupForm({ status }) {
                             <RichSelect value={group} onChange={setGroup} options={providerOptions} placeholder="Select provider..." />
                         </div>
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Label>Auth method</Label>
-                                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                                    <input type="checkbox" checked={showAdvanced} onChange={(e) => setShowAdvanced(e.target.checked)} className="rounded accent-neutral-900" />
-                                    Show OAuth options
-                                </label>
-                            </div>
+                            <Label>Auth method</Label>
                             <RichSelect value={authChoice} onChange={setAuthChoice} options={authOptions} placeholder="Select auth method..." />
                         </div>
                         <div className="space-y-2">

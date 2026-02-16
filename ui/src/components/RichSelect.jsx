@@ -40,7 +40,8 @@ export default function RichSelect({ value, onChange, options, placeholder = "Se
                                 key={opt.value}
                                 value={opt.value}
                                 textValue={opt.label}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                disabled={opt.disabled}
+                                className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
                             >
                                 <span className="absolute left-2 flex h-4 w-4 items-center justify-center">
                                     <SelectPrimitive.ItemIndicator>

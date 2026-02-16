@@ -20,12 +20,87 @@ const EDITOR_OPTIONS = {
     scrollbar: { vertical: "hidden", horizontal: "hidden" },
 };
 
-const TABS = [
-    { id: "config", label: "openclaw.json", language: "json", load: getConfigRaw, save: saveConfigRaw, format: true, saveMsg: "Saved. Gateway restarted." },
-    { id: "env", label: ".env", language: "plaintext", load: getEnvRaw, save: saveEnvRaw, format: false, saveMsg: "Saved." },
+const FILE_DEFS = {
+    config: { label: "openclaw.json", language: "json", load: getConfigRaw, save: saveConfigRaw, format: true, saveMsg: "Saved. Gateway restarted.", alwaysEditable: false },
+    env: { label: ".env", language: "plaintext", load: getEnvRaw, save: saveEnvRaw, format: false, saveMsg: "Saved. Gateway restarted.", alwaysEditable: true },
+};
+
+/* ── .env autocomplete definitions ── */
+const ENV_KEYS = [
+    { key: "OPENCLAW_GATEWAY_TOKEN", detail: "Gateway auth token", section: "Gateway" },
+    { key: "OPENCLAW_GATEWAY_PASSWORD", detail: "Alternative gateway auth password", section: "Gateway" },
+    { key: "OPENCLAW_STATE_DIR", detail: "State directory (default: ~/.openclaw)", section: "Gateway" },
+    { key: "OPENCLAW_CONFIG_PATH", detail: "Config file path", section: "Gateway" },
+    { key: "OPENCLAW_HOME", detail: "Home directory override", section: "Gateway" },
+    { key: "OPENCLAW_LOAD_SHELL_ENV", detail: "Import missing keys from login shell", section: "Gateway" },
+    { key: "OPENCLAW_SHELL_ENV_TIMEOUT_MS", detail: "Shell env import timeout", section: "Gateway" },
+    { key: "OPENAI_API_KEY", detail: "OpenAI API key", section: "Model providers" },
+    { key: "ANTHROPIC_API_KEY", detail: "Anthropic API key", section: "Model providers" },
+    { key: "GEMINI_API_KEY", detail: "Google Gemini API key", section: "Model providers" },
+    { key: "OPENROUTER_API_KEY", detail: "OpenRouter API key", section: "Model providers" },
+    { key: "ZAI_API_KEY", detail: "ZAI API key", section: "Model providers" },
+    { key: "AI_GATEWAY_API_KEY", detail: "AI Gateway API key", section: "Model providers" },
+    { key: "MINIMAX_API_KEY", detail: "MiniMax API key", section: "Model providers" },
+    { key: "SYNTHETIC_API_KEY", detail: "Synthetic API key", section: "Model providers" },
+
+    { key: "TELEGRAM_BOT_TOKEN", detail: "Telegram bot token", section: "Channels" },
+    { key: "DISCORD_BOT_TOKEN", detail: "Discord bot token", section: "Channels" },
+    { key: "SLACK_BOT_TOKEN", detail: "Slack bot token (xoxb-...)", section: "Channels" },
+    { key: "SLACK_APP_TOKEN", detail: "Slack app token (xapp-...)", section: "Channels" },
+    { key: "MATTERMOST_BOT_TOKEN", detail: "Mattermost bot token", section: "Channels" },
+    { key: "MATTERMOST_URL", detail: "Mattermost server URL", section: "Channels" },
+    { key: "ZALO_BOT_TOKEN", detail: "Zalo bot token", section: "Channels" },
+    { key: "OPENCLAW_TWITCH_ACCESS_TOKEN", detail: "Twitch access token", section: "Channels" },
+
+    { key: "BRAVE_API_KEY", detail: "Brave Search API key", section: "Tools & media" },
+    { key: "PERPLEXITY_API_KEY", detail: "Perplexity API key", section: "Tools & media" },
+    { key: "FIRECRAWL_API_KEY", detail: "Firecrawl API key", section: "Tools & media" },
+    { key: "ELEVENLABS_API_KEY", detail: "ElevenLabs API key", section: "Tools & media" },
+    { key: "XI_API_KEY", detail: "ElevenLabs alias", section: "Tools & media" },
+    { key: "DEEPGRAM_API_KEY", detail: "Deepgram API key", section: "Tools & media" },
 ];
 
-function FileEditor({ tab }) {
+let _envCompletionRegistered = false;
+
+function registerEnvCompletions(monaco) {
+    if (_envCompletionRegistered) return;
+    _envCompletionRegistered = true;
+
+    monaco.languages.registerCompletionItemProvider("plaintext", {
+        triggerCharacters: [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ_'],
+        provideCompletionItems(model, position) {
+            const lineContent = model.getLineContent(position.lineNumber);
+            const textUntilPosition = lineContent.substring(0, position.column - 1);
+
+            // Only suggest at the start of a line (key position, before '=')
+            if (textUntilPosition.includes("=")) return { suggestions: [] };
+
+            const word = model.getWordUntilPosition(position);
+            const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
+            };
+
+            const suggestions = ENV_KEYS.map((e) => ({
+                label: e.key,
+                kind: monaco.languages.CompletionItemKind.Variable,
+                detail: `[${e.section}] ${e.detail}`,
+                insertText: `${e.key}=`,
+                range,
+                sortText: `${e.section}-${e.key}`,
+            }));
+
+            return { suggestions };
+        },
+    });
+}
+
+export default function ConfigPanel({ fileId }) {
+    const def = FILE_DEFS[fileId] || FILE_DEFS.config;
+    const canAlwaysEdit = def.alwaysEditable;
+
     const [original, setOriginal] = useState("");
     const [content, setContent] = useState("");
     const [filePath, setFilePath] = useState("");
@@ -41,15 +116,16 @@ function FileEditor({ tab }) {
     }), []);
 
     const hasChanges = content !== original;
+    const editable = exists || canAlwaysEdit;
 
     const load = useCallback(async () => {
         setStatus("");
         setDiffMode(false);
         try {
-            const r = await tab.load();
+            const r = await def.load();
             const raw = r.content || "";
             let formatted = raw;
-            if (tab.language === "json") {
+            if (def.language === "json") {
                 try { formatted = JSON.stringify(JSON.parse(raw), null, 2); } catch { }
             }
             setOriginal(formatted);
@@ -59,7 +135,7 @@ function FileEditor({ tab }) {
         } catch (e) {
             setStatus(`Error loading: ${e}`);
         }
-    }, [tab]);
+    }, [def]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -69,20 +145,21 @@ function FileEditor({ tab }) {
 
     const handleSave = async () => {
         const ok = await showConfirm({
-            title: `Save ${tab.label}?`,
-            description: tab.id === "config"
+            title: `Save ${def.label}?`,
+            description: fileId === "config"
                 ? "This will save the config and restart the gateway. A timestamped backup will be created."
-                : "This will save the file. A timestamped backup will be created.",
+                : "This will save the file and restart the gateway.",
             confirmLabel: "Save",
         });
         if (!ok) return;
         setSaving(true);
         setStatus("Saving...");
         try {
-            await tab.save(content);
+            await def.save(content);
             setOriginal(content);
+            setExists(true);
             setDiffMode(false);
-            setStatus(tab.saveMsg);
+            setStatus(def.saveMsg);
         } catch (e) {
             setStatus(`Error: ${e}`);
         } finally {
@@ -95,15 +172,23 @@ function FileEditor({ tab }) {
         setDiffMode(false);
     };
 
+    const handleEditorMount = (editor, monaco) => {
+        editorRef.current = editor;
+        if (fileId === "env") {
+            registerEnvCompletions(monaco);
+        }
+    };
+
     return (
         <div className="flex flex-col flex-1 min-h-0">
             {/* Toolbar */}
             <div className="h-11 flex items-center justify-between px-4 border-b border-border shrink-0 bg-background">
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="text-xs font-mono text-muted-foreground truncate">
-                        {filePath || tab.label}
+                        {filePath || def.label}
                     </span>
-                    {!exists && <Badge variant="outline">not found</Badge>}
+                    {!exists && !canAlwaysEdit && <Badge variant="outline">not found</Badge>}
+                    {!exists && canAlwaysEdit && <Badge variant="outline">new file</Badge>}
                     {hasChanges && <Badge variant="secondary">modified</Badge>}
                     {status && (
                         <span className={`text-xs truncate ${status.startsWith("Error") ? "text-destructive" : "text-muted-foreground"}`}>
@@ -112,7 +197,7 @@ function FileEditor({ tab }) {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {hasChanges && exists && (
+                    {hasChanges && editable && (
                         <>
                             <Button variant="ghost" size="sm" onClick={() => setDiffMode((v) => !v)}>
                                 {diffMode ? "Editor" : "Diff"}
@@ -121,10 +206,10 @@ function FileEditor({ tab }) {
                         </>
                     )}
                     <Button variant="ghost" size="sm" onClick={load}>Reload</Button>
-                    {!diffMode && exists && tab.format && (
+                    {!diffMode && editable && def.format && (
                         <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>
                     )}
-                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges || !exists}>
+                    <Button size="sm" onClick={handleSave} disabled={saving || !hasChanges || !editable}>
                         {saving ? "Saving..." : "Save"}
                     </Button>
                 </div>
@@ -135,7 +220,7 @@ function FileEditor({ tab }) {
                 {diffMode ? (
                     <DiffEditor
                         height="100%"
-                        language={tab.language}
+                        language={def.language}
                         original={original}
                         modified={content}
                         onMount={(editor) => {
@@ -154,45 +239,16 @@ function FileEditor({ tab }) {
                 ) : (
                     <Editor
                         height="100%"
-                        defaultLanguage={tab.language}
-                        value={exists ? content : ""}
-                        onChange={(v) => exists && setContent(v || "")}
-                        onMount={(editor) => { editorRef.current = editor; }}
-                        options={{ ...EDITOR_OPTIONS, readOnly: !exists }}
+                        defaultLanguage={def.language}
+                        value={content}
+                        onChange={(v) => editable && setContent(v || "")}
+                        onMount={handleEditorMount}
+                        options={{ ...EDITOR_OPTIONS, readOnly: !editable }}
                     />
                 )}
             </div>
 
             {dialog && <ConfirmDialog open {...dialog} />}
-        </div>
-    );
-}
-
-export default function ConfigPanel() {
-    const [activeTab, setActiveTab] = useState("config");
-
-    return (
-        <div className="flex flex-1 min-h-0">
-            {/* Sidebar */}
-            <div className="w-44 shrink-0 border-r border-border bg-background py-2 px-2 space-y-0.5">
-                {TABS.map((t) => (
-                    <button
-                        key={t.id}
-                        onClick={() => setActiveTab(t.id)}
-                        className={`w-full text-left rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${activeTab === t.id
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                            }`}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Editor area */}
-            <div className="flex-1 flex flex-col min-h-0">
-                <FileEditor key={activeTab} tab={TABS.find((t) => t.id === activeTab)} />
-            </div>
         </div>
     );
 }

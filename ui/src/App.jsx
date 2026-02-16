@@ -28,7 +28,12 @@ const NAV = [
     { id: "setup", label: "Setup" },
     { id: "approvals", label: "Approvals" },
     { id: "terminal", label: "Terminal" },
-    { id: "config", label: "Files" },
+    {
+        id: "files", label: "Files", children: [
+            { id: "file-config", label: "openclaw.json" },
+            { id: "file-env", label: ".env" },
+        ]
+    },
     { id: "data", label: "Backup & Restore" },
 ];
 
@@ -37,8 +42,6 @@ export default function App() {
     const [tab, setTab] = useState("setup");
     const status = useStatus(authed);
     const configured = status.data?.configured;
-
-    // (no longer gating tabs on configured state)
 
     useEffect(() => {
         const handler = () => setAuthed(false);
@@ -50,18 +53,30 @@ export default function App() {
         return <LoginPage onLogin={() => setAuthed(true)} />;
     }
 
-    const isFullBleed = tab === "terminal" || tab === "config";
+    const isFullBleed = tab === "terminal" || tab === "file-config" || tab === "file-env";
+
+    // Find the label for the current tab (including children)
+    const findLabel = (id) => {
+        for (const item of NAV) {
+            if (item.id === id) return item.label;
+            if (item.children) {
+                const child = item.children.find((c) => c.id === id);
+                if (child) return child.label;
+            }
+        }
+        return "";
+    };
 
     return (
         <div className="flex h-screen bg-background text-foreground font-sans">
             {/* Sidebar */}
             <aside className="w-52 shrink-0 border-r border-border flex flex-col">
-                <div className="h-14 flex flex-col justify-center px-6 border-b border-border">
+                <div className="h-14 flex items-center px-6 border-b border-border">
                     <span className="text-sm font-semibold tracking-tight">OpenClaw</span>
                     {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
-                        <span className="text-[10px] font-mono text-muted-foreground leading-tight">
+                        <sup className="text-[9px] font-mono text-muted-foreground ml-0.5 -translate-y-1">
                             {status.data.openclawVersion}
-                        </span>
+                        </sup>
                     )}
                 </div>
                 {configured && (
@@ -79,18 +94,40 @@ export default function App() {
                     </div>
                 )}
                 <nav className="flex-1 py-2 px-3 space-y-1">
-                    {NAV.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => setTab(item.id)}
-                            className={`w-full flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${tab === item.id
-                                ? "bg-accent text-accent-foreground cursor-pointer"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                                }`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
+                    {NAV.map((item) =>
+                        item.children ? (
+                            <div key={item.id}>
+                                <span className="block px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                    {item.label}
+                                </span>
+                                <div className="space-y-0.5 pl-2">
+                                    {item.children.map((child) => (
+                                        <button
+                                            key={child.id}
+                                            onClick={() => setTab(child.id)}
+                                            className={`w-full flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === child.id
+                                                ? "bg-accent text-accent-foreground cursor-pointer"
+                                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                                }`}
+                                        >
+                                            {child.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                key={item.id}
+                                onClick={() => setTab(item.id)}
+                                className={`w-full flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${tab === item.id
+                                    ? "bg-accent text-accent-foreground cursor-pointer"
+                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                    }`}
+                            >
+                                {item.label}
+                            </button>
+                        )
+                    )}
                 </nav>
                 <div className="p-3 border-t border-border">
                     <button
@@ -106,7 +143,7 @@ export default function App() {
             <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
                 {!isFullBleed && (
                     <div className="h-14 flex items-center justify-between px-8 border-b border-border shrink-0">
-                        <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
+                        <h2 className="text-sm font-semibold">{findLabel(tab)}</h2>
                         {tab === "setup" && (
                             <div className="flex items-center gap-2">
                                 <StatusLight active={configured && status.data?.gatewayReachable} loading={status.loading} />
@@ -123,24 +160,22 @@ export default function App() {
                         )}
                     </div>
                 )}
-                )
-}
-                {
-                    tab === "terminal" ? (
-                        <ConsolePanel />
-                    ) : tab === "config" ? (
-                        <ConfigPanel />
-                    ) : tab === "approvals" ? (
-                        <ApprovalsPanel />
-                    ) : tab === "data" ? (
-                        <DataPanel status={status} />
-                    ) : (
-                        <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                            <SetupPanel status={status} />
-                        </div>
-                    )
-                }
-            </main >
-        </div >
+                {tab === "terminal" ? (
+                    <ConsolePanel />
+                ) : tab === "file-config" ? (
+                    <ConfigPanel fileId="config" />
+                ) : tab === "file-env" ? (
+                    <ConfigPanel fileId="env" />
+                ) : tab === "approvals" ? (
+                    <ApprovalsPanel />
+                ) : tab === "data" ? (
+                    <DataPanel status={status} />
+                ) : (
+                    <div className="max-w-3xl mx-auto px-8 py-6 w-full">
+                        <SetupPanel status={status} />
+                    </div>
+                )}
+            </main>
+        </div>
     );
 }

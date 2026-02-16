@@ -1156,13 +1156,12 @@ app.post("/setup/api/env/raw", requireSetupAuth, async (req, res) => {
     fs.mkdirSync(STATE_DIR, { recursive: true });
 
     const p = envPath();
-    // Backup
-    if (fs.existsSync(p)) {
-      const backupPath = `${p}.bak-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-      fs.copyFileSync(p, backupPath);
-    }
-
     fs.writeFileSync(p, content, { encoding: "utf8", mode: 0o600 });
+
+    // Restart gateway so new env vars take effect.
+    if (isConfigured()) {
+      await restartGateway();
+    }
 
     res.json({ ok: true, path: p });
   } catch (err) {

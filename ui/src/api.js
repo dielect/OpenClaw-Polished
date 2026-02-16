@@ -6,13 +6,13 @@ export function setAuth(password) {
     const encoded = btoa(`:${password}`);
     _authHeader = `Basic ${encoded}`;
     try {
-        sessionStorage.setItem("openclaw_auth", password);
+        localStorage.setItem("openclaw_auth", password);
     } catch { }
 }
 
 export function restoreAuth() {
     try {
-        const saved = sessionStorage.getItem("openclaw_auth");
+        const saved = localStorage.getItem("openclaw_auth");
         if (saved) {
             setAuth(saved);
             return true;
@@ -24,7 +24,7 @@ export function restoreAuth() {
 export function clearAuth() {
     _authHeader = null;
     try {
-        sessionStorage.removeItem("openclaw_auth");
+        localStorage.removeItem("openclaw_auth");
     } catch { }
 }
 
@@ -227,6 +227,6 @@ export async function exportBackup() {
 }
 export function getTerminalWsUrl() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const token = btoa(`:${sessionStorage.getItem("openclaw_auth") || ""}`);
+    const token = btoa(`:${localStorage.getItem("openclaw_auth") || ""}`);
     return `${proto}//${location.host}/setup/terminal?token=${encodeURIComponent(token)}`;
 }

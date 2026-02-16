@@ -2,6 +2,12 @@
 
 A polished fork of the [OpenClaw Railway Template](https://github.com/vignesh07/openclaw-railway-template), featuring a modern React-based Setup UI and improved reverse proxy reliability.
 
+## Screenshots
+
+| Login | Setup |
+|:---:|:---:|
+| ![Login Page](assets/login.png) | ![Setup Panel](assets/setup.png) |
+
 ## What's different from upstream
 
 - **Modern Setup UI** — React + Tailwind CSS, shadcn/ui-inspired design with sidebar navigation

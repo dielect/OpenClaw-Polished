@@ -18,11 +18,13 @@ const EDITOR_OPTIONS = {
     hideCursorInOverviewRuler: true,
     padding: { top: 12, bottom: 12 },
     scrollbar: { vertical: "hidden", horizontal: "hidden" },
+    bracketPairColorization: { enabled: true },
+    guides: { bracketPairs: true },
 };
 
 const FILE_DEFS = {
     config: { label: "openclaw.json", language: "json", load: getConfigRaw, save: saveConfigRaw, format: true, saveMsg: "Saved. Gateway restarted.", alwaysEditable: false },
-    env: { label: ".env", language: "plaintext", load: getEnvRaw, save: saveEnvRaw, format: false, saveMsg: "Saved. Gateway restarted.", alwaysEditable: true },
+    env: { label: ".env", language: "dotenv", load: getEnvRaw, save: saveEnvRaw, format: false, saveMsg: "Saved. Gateway restarted.", alwaysEditable: true },
 };
 
 /* ── .env autocomplete definitions ── */
@@ -63,17 +65,31 @@ const ENV_KEYS = [
 
 let _envCompletionRegistered = false;
 
-function registerEnvCompletions(monaco) {
+function registerEnvLanguage(monaco) {
     if (_envCompletionRegistered) return;
     _envCompletionRegistered = true;
 
-    monaco.languages.registerCompletionItemProvider("plaintext", {
+    // Register custom dotenv language
+    monaco.languages.register({ id: "dotenv" });
+
+    monaco.languages.setMonarchTokensProvider("dotenv", {
+        tokenizer: {
+            root: [
+                // Comments
+                [/^\s*#.*$/, "comment"],
+                // KEY=VALUE
+                [/^([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)(.*)$/, ["variable", "delimiter", "string"]],
+            ],
+        },
+    });
+
+    // Completion provider
+    monaco.languages.registerCompletionItemProvider("dotenv", {
         triggerCharacters: [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ_'],
         provideCompletionItems(model, position) {
             const lineContent = model.getLineContent(position.lineNumber);
             const textUntilPosition = lineContent.substring(0, position.column - 1);
 
-            // Only suggest at the start of a line (key position, before '=')
             if (textUntilPosition.includes("=")) return { suggestions: [] };
 
             const word = model.getWordUntilPosition(position);
@@ -176,7 +192,7 @@ export default function ConfigPanel({ fileId }) {
     const handleEditorMount = (editor, monaco) => {
         editorRef.current = editor;
         if (fileId === "env") {
-            registerEnvCompletions(monaco);
+            registerEnvLanguage(monaco);
         }
     };
 

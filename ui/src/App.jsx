@@ -29,7 +29,7 @@ const NAV = [
     { id: "approvals", label: "Approvals" },
     { id: "terminal", label: "Terminal" },
     {
-        id: "files", label: "Files", children: [
+        id: "files", label: "Files Config", children: [
             { id: "file-config", label: "openclaw.json" },
             { id: "file-env", label: ".env" },
         ]
@@ -71,12 +71,12 @@ export default function App() {
         <div className="flex h-screen bg-background text-foreground font-sans">
             {/* Sidebar */}
             <aside className="w-52 shrink-0 border-r border-border flex flex-col">
-                <div className="h-14 flex items-center px-6 border-b border-border">
+                <div className="h-14 flex items-center gap-2 px-6 border-b border-border">
                     <span className="text-sm font-semibold tracking-tight">OpenClaw</span>
                     {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
-                        <sup className="text-[9px] font-mono text-muted-foreground ml-0.5 -translate-y-1">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground leading-none">
                             {status.data.openclawVersion}
-                        </sup>
+                        </span>
                     )}
                 </div>
                 {configured && (

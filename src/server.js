@@ -120,6 +120,7 @@ function isConfigured() {
 
 let gatewayProc = null;
 let gatewayStarting = null;
+let _gatewayReady = false; // true only after probe confirms gateway is accepting connections
 
 // Debug breadcrumbs for common Railway failures (502 / "Application failed to respond").
 let lastGatewayError = null;
@@ -217,6 +218,7 @@ async function startGateway() {
     console.error(msg);
     lastGatewayError = msg;
     gatewayProc = null;
+    _gatewayReady = false;
   });
 
   gatewayProc.on("exit", (code, signal) => {
@@ -224,10 +226,12 @@ async function startGateway() {
     console.error(msg);
     lastGatewayExit = { code, signal, at: new Date().toISOString() };
     gatewayProc = null;
+    _gatewayReady = false;
 
     // Auto-restart with exponential backoff if the gateway crashes unexpectedly.
     // Only restart if still configured (user may have reset).
-    if (isConfigured() && signal !== "SIGTERM") {
+    // Don't restart on clean shutdown: SIGTERM (explicit kill) or code=0 (graceful exit).
+    if (isConfigured() && signal !== "SIGTERM" && code !== 0) {
       scheduleGatewayRestart();
     }
   });
@@ -250,7 +254,7 @@ async function runDoctorBestEffort() {
 
 async function ensureGatewayRunning(opts = {}) {
   if (!isConfigured()) return { ok: false, reason: "not configured" };
-  if (gatewayProc) return { ok: true };
+  if (gatewayProc && _gatewayReady) return { ok: true };
   const waitTimeoutMs = opts.timeoutMs ?? 30_000;
   if (!gatewayStarting) {
     gatewayStarting = (async () => {
@@ -268,6 +272,7 @@ async function ensureGatewayRunning(opts = {}) {
           }
           throw new Error("Gateway did not become ready in time");
         }
+        _gatewayReady = true;
       } catch (err) {
         const msg = `[gateway] start failure: ${String(err)}`;
         lastGatewayError = msg;
@@ -1412,9 +1417,10 @@ app.use(async (req, res) => {
   }
 
   if (isConfigured()) {
-    // Fast synchronous path: if gateway is already running, proxy immediately
-    // without going through async ensureGatewayRunning().
-    if (!gatewayProc) {
+    // Only proxy when gateway is confirmed ready. If the process exists but
+    // hasn't passed the readiness probe yet, return 503 instead of forwarding
+    // to an unready port (which causes ECONNREFUSED / 502).
+    if (!_gatewayReady) {
       try {
         await ensureGatewayRunning();
       } catch (err) {
@@ -1678,7 +1684,7 @@ server.on("upgrade", async (req, socket, head) => {
     socket.destroy();
     return;
   }
-  if (!gatewayProc) {
+  if (!_gatewayReady) {
     try {
       await ensureGatewayRunning();
     } catch {

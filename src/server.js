@@ -255,7 +255,7 @@ async function runDoctorBestEffort() {
 async function ensureGatewayRunning(opts = {}) {
   if (!isConfigured()) return { ok: false, reason: "not configured" };
   if (gatewayProc && _gatewayReady) return { ok: true };
-  const waitTimeoutMs = opts.timeoutMs ?? 30_000;
+  const waitTimeoutMs = opts.timeoutMs ?? 90_000;
   if (!gatewayStarting) {
     gatewayStarting = (async () => {
       try {
@@ -264,11 +264,21 @@ async function ensureGatewayRunning(opts = {}) {
         const ready = await waitForGatewayReady({ timeoutMs: waitTimeoutMs });
         if (!ready) {
           // If the process is still alive, it may just be slow to initialize.
-          // Don't kill it — let it continue starting. The next call to
-          // ensureGatewayRunning will find gatewayProc set and return early,
-          // or the auto-restart handler will take over if it crashes.
+          // Don't kill it — let it continue starting. Start a background probe
+          // so _gatewayReady gets set when it eventually comes up, and incoming
+          // requests will be served once it's ready.
           if (gatewayProc) {
-            console.warn("[gateway] probe timed out but process is still alive (PID may still be initializing)");
+            console.warn("[gateway] probe timed out but process is still alive — continuing background probe");
+            (async () => {
+              const bgReady = await waitForGatewayReady({ timeoutMs: 120_000 });
+              if (bgReady) {
+                _gatewayReady = true;
+                _restartAttempts = 0;
+                console.log("[gateway] background probe succeeded — gateway is now ready");
+              } else {
+                console.error("[gateway] background probe also timed out");
+              }
+            })();
           }
           throw new Error("Gateway did not become ready in time");
         }

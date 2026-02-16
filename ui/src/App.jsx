@@ -65,6 +65,20 @@ export default function App() {
                 <div className="h-14 flex items-center px-6 border-b border-border">
                     <span className="text-sm font-semibold tracking-tight">OpenClaw</span>
                 </div>
+                {configured && (
+                    <div className="px-3 pt-3">
+                        <a
+                            href={`/openclaw?token=${encodeURIComponent(status.data?.gatewayToken || "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:border-foreground/20 hover:text-foreground hover:shadow-sm"
+                        >
+                            <span className="transition-transform group-hover:scale-110 group-hover:-rotate-6">🚀</span>
+                            <span className="flex-1">Open UI</span>
+                            <span className="text-xs opacity-0 -translate-x-1 transition-all group-hover:opacity-60 group-hover:translate-x-0">→</span>
+                        </a>
+                    </div>
+                )}
                 <nav className="flex-1 py-2 px-3 space-y-1">
                     {NAV.map((item) => (
                         <button

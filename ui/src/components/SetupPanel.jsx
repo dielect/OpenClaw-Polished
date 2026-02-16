@@ -1,33 +1,6 @@
-import { useState } from "react";
 import Lottie from "lottie-react";
 import lobsterAnimation from "../assets/lobster.json";
 import SetupForm from "./SetupForm";
-
-
-/* ── Quick-action card (big clickable tile) ── */
-function ActionCard({ icon, title, description, onClick, disabled, href }) {
-    const cls = `group relative flex flex-col items-center justify-center gap-3 rounded-xl border border-border p-8 transition-all
-        ${disabled
-            ? "opacity-40 cursor-not-allowed"
-            : "cursor-pointer hover:border-foreground/20 hover:shadow-md hover:-translate-y-0.5"}`;
-
-    if (href && !disabled) {
-        return (
-            <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
-                <span className="text-3xl">{icon}</span>
-                <span className="text-sm font-semibold">{title}</span>
-                <span className="text-xs text-muted-foreground text-center">{description}</span>
-            </a>
-        );
-    }
-    return (
-        <button type="button" onClick={disabled ? undefined : onClick} className={cls}>
-            <span className="text-3xl">{icon}</span>
-            <span className="text-sm font-semibold">{title}</span>
-            <span className="text-xs text-muted-foreground text-center">{description}</span>
-        </button>
-    );
-}
 
 
 /* ── Quick patch preset ── */
@@ -69,8 +42,6 @@ export default function SetupPanel({ status, onNavigateConfig }) {
     const { data, error, loading } = status;
     const configured = data?.configured;
 
-    const [showSetup, setShowSetup] = useState(false);
-
     /* First load — show Lottie animation instead of skeleton */
     if (loading && !data) {
         return (
@@ -87,25 +58,9 @@ export default function SetupPanel({ status, onNavigateConfig }) {
                 <p className="text-sm text-destructive text-center">{error}</p>
             )}
 
-            {/* ── Configured: action cards ── */}
-            {configured && (
-                <div className="grid grid-cols-2 gap-4">
-                    <ActionCard
-                        icon="🚀"
-                        title="OpenClaw UI"
-                        description="Open the main interface"
-                        href={`/openclaw?token=${encodeURIComponent(data?.gatewayToken || "")}`}
-                    />
-                    <ActionCard
-                        icon="⚙️"
-                        title={showSetup ? "Hide setup" : "Reconfigure"}
-                        description={showSetup ? "Collapse the setup form" : "Change provider, channels, or reset"}
-                        onClick={() => setShowSetup((v) => !v)}
-                    />
-                </div>
-            )}
+            <SetupForm status={status} />
 
-            {/* ── Quick config patches ── */}
+            {/* ── Quick config patches (only when configured) ── */}
             {configured && (
                 <div>
                     <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Quick config</h3>
@@ -125,18 +80,6 @@ export default function SetupPanel({ status, onNavigateConfig }) {
                     </div>
                 </div>
             )}
-
-            {/* ── Not configured OR reconfigure: setup form ── */}
-            {(!configured || showSetup) && (
-                <div>
-                    {configured && (
-                        <div className="mb-4 h-px bg-border" />
-                    )}
-                    <SetupForm status={status} />
-                </div>
-            )}
-
-
         </div>
     );
 }

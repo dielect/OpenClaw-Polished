@@ -169,6 +169,18 @@ export function saveConfigRaw(content) {
     });
 }
 
+export function getEnvRaw() {
+    return request("/setup/api/env/raw");
+}
+
+export function saveEnvRaw(content) {
+    return request("/setup/api/env/raw", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content }),
+    });
+}
+
 export function resetSetup() {
     return rawFetch("/setup/api/reset", { method: "POST" }).then((r) => r.text());
 }

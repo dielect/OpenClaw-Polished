@@ -28,8 +28,8 @@ const NAV = [
     { id: "setup", label: "Setup" },
     { id: "approvals", label: "Approvals" },
     { id: "terminal", label: "Terminal" },
-    { id: "config", label: "Config" },
-    { id: "data", label: "Data" },
+    { id: "config", label: "Files" },
+    { id: "data", label: "Backup & Restore" },
 ];
 
 export default function App() {
@@ -56,8 +56,13 @@ export default function App() {
         <div className="flex h-screen bg-background text-foreground font-sans">
             {/* Sidebar */}
             <aside className="w-52 shrink-0 border-r border-border flex flex-col">
-                <div className="h-14 flex items-center px-6 border-b border-border">
+                <div className="h-14 flex flex-col justify-center px-6 border-b border-border">
                     <span className="text-sm font-semibold tracking-tight">OpenClaw</span>
+                    {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
+                        <span className="text-[10px] font-mono text-muted-foreground leading-tight">
+                            {status.data.openclawVersion}
+                        </span>
+                    )}
                 </div>
                 {configured && (
                     <div className="px-3 pt-3">
@@ -103,42 +108,39 @@ export default function App() {
                     <div className="h-14 flex items-center justify-between px-8 border-b border-border shrink-0">
                         <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
                         {tab === "setup" && (
-                            <div className="flex items-center gap-5">
-                                <div className="flex items-center gap-2">
-                                    <StatusLight active={configured && status.data?.gatewayReachable} loading={status.loading} />
-                                    <span className="text-xs font-medium text-muted-foreground">
-                                        {status.loading
-                                            ? "Connecting..."
-                                            : !configured
-                                                ? "Not configured"
-                                                : status.data?.gatewayReachable
-                                                    ? "Running"
-                                                    : "Unhealthy"}
-                                    </span>
-                                </div>
-                                {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
-                                        {status.data.openclawVersion}
-                                    </span>
-                                )}
+                            <div className="flex items-center gap-2">
+                                <StatusLight active={configured && status.data?.gatewayReachable} loading={status.loading} />
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    {status.loading
+                                        ? "Connecting..."
+                                        : !configured
+                                            ? "Not configured"
+                                            : status.data?.gatewayReachable
+                                                ? "Running"
+                                                : "Unhealthy"}
+                                </span>
                             </div>
                         )}
                     </div>
                 )}
-                {tab === "terminal" ? (
-                    <ConsolePanel />
-                ) : tab === "config" ? (
-                    <ConfigPanel />
-                ) : tab === "approvals" ? (
-                    <ApprovalsPanel />
-                ) : tab === "data" ? (
-                    <DataPanel status={status} />
-                ) : (
-                    <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        <SetupPanel status={status} />
-                    </div>
-                )}
-            </main>
-        </div>
+                )
+}
+                {
+                    tab === "terminal" ? (
+                        <ConsolePanel />
+                    ) : tab === "config" ? (
+                        <ConfigPanel />
+                    ) : tab === "approvals" ? (
+                        <ApprovalsPanel />
+                    ) : tab === "data" ? (
+                        <DataPanel status={status} />
+                    ) : (
+                        <div className="max-w-3xl mx-auto px-8 py-6 w-full">
+                            <SetupPanel status={status} />
+                        </div>
+                    )
+                }
+            </main >
+        </div >
     );
 }

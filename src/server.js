@@ -1129,6 +1129,47 @@ app.post("/setup/api/config/raw", requireSetupAuth, async (req, res) => {
   }
 });
 
+// ── .env file endpoints ──
+function envPath() {
+  const dir = path.dirname(configPath());
+  return path.join(dir, ".env");
+}
+
+app.get("/setup/api/env/raw", requireSetupAuth, async (_req, res) => {
+  try {
+    const p = envPath();
+    const exists = fs.existsSync(p);
+    const content = exists ? fs.readFileSync(p, "utf8") : "";
+    res.json({ ok: true, path: p, exists, content });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+app.post("/setup/api/env/raw", requireSetupAuth, async (req, res) => {
+  try {
+    const content = String((req.body && req.body.content) || "");
+    if (content.length > 500_000) {
+      return res.status(413).json({ ok: false, error: "File too large" });
+    }
+
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+
+    const p = envPath();
+    // Backup
+    if (fs.existsSync(p)) {
+      const backupPath = `${p}.bak-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+      fs.copyFileSync(p, backupPath);
+    }
+
+    fs.writeFileSync(p, content, { encoding: "utf8", mode: 0o600 });
+
+    res.json({ ok: true, path: p });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
 app.post("/setup/api/pairing/approve", requireSetupAuth, async (req, res) => {
   const { channel, code } = req.body || {};
   if (!channel || !code) {

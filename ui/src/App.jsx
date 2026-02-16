@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import LoginPage from "./components/LoginPage";
-import DashboardPanel from "./components/DashboardPanel";
+import SetupPanel from "./components/SetupPanel";
 import ApprovalsPanel from "./components/ApprovalsPanel";
 import ConsolePanel from "./components/ConsolePanel";
 import ConfigPanel from "./components/ConfigPanel";
@@ -25,7 +25,7 @@ function StatusLight({ active, loading }) {
 }
 
 const NAV = [
-    { id: "dashboard", label: "Dashboard" },
+    { id: "setup", label: "Setup" },
     { id: "approvals", label: "Approvals" },
     { id: "terminal", label: "Terminal" },
     { id: "config", label: "Config" },
@@ -34,7 +34,7 @@ const NAV = [
 
 export default function App() {
     const [authed, setAuthed] = useState(() => restoreAuth() && isAuthed());
-    const [tab, setTab] = useState("dashboard");
+    const [tab, setTab] = useState("setup");
     const [pendingPatch, setPendingPatch] = useState(null);
     const status = useStatus(authed);
     const configured = status.data?.configured;
@@ -98,7 +98,7 @@ export default function App() {
                 {!isFullBleed && (
                     <div className="h-14 flex items-center justify-between px-8 border-b border-border shrink-0">
                         <h2 className="text-sm font-semibold">{NAV.find((n) => n.id === tab)?.label}</h2>
-                        {tab === "dashboard" && (
+                        {tab === "setup" && (
                             <div className="flex items-center gap-5">
                                 <div className="flex items-center gap-2">
                                     <StatusLight active={configured && status.data?.gatewayReachable} loading={status.loading} />
@@ -131,7 +131,7 @@ export default function App() {
                     <DataPanel status={status} />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        <DashboardPanel status={status} onNavigateConfig={navigateToConfig} onNavigateData={navigateToData} />
+                        <SetupPanel status={status} onNavigateConfig={navigateToConfig} onNavigateData={navigateToData} />
                     </div>
                 )}
             </main>

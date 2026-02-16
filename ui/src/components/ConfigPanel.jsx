@@ -108,7 +108,7 @@ export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
 
     useEffect(() => { load(); }, []);
 
-    // Apply pending patch from Dashboard quick actions
+    // Apply pending patch from Setup quick actions
     const patchAppliedRef = useRef(false);
     useEffect(() => {
         if (!pendingPatch || patchAppliedRef.current) return;

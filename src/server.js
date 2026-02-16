@@ -418,8 +418,6 @@ const AUTH_CHOICE_GROUP_DEFS = [
   { value: "huggingface", label: "Hugging Face", hint: "Inference API (HF token)", choices: ["huggingface-api-key"] },
   { value: "venice", label: "Venice AI", hint: "Privacy-focused (uncensored models)", choices: ["venice-api-key"] },
   { value: "litellm", label: "LiteLLM", hint: "Unified LLM gateway (100+ providers)", choices: ["litellm-api-key"] },
-  { value: "cloudflare-ai-gateway", label: "Cloudflare AI Gateway", hint: "Account ID + Gateway ID + API key", choices: ["cloudflare-ai-gateway-api-key"] },
-  { value: "custom", label: "Custom Provider", hint: "Any OpenAI or Anthropic compatible endpoint", choices: ["custom-api-key"] },
 ];
 
 const BASE_AUTH_CHOICE_OPTIONS = [
@@ -459,7 +457,6 @@ const BASE_AUTH_CHOICE_OPTIONS = [
   { value: "minimax-api", label: "MiniMax M2.5" },
   { value: "minimax-api-key-cn", label: "MiniMax M2.5 (CN)", hint: "China endpoint (api.minimaxi.com)" },
   { value: "minimax-api-lightning", label: "MiniMax M2.5 Lightning", hint: "Faster, higher output cost" },
-  { value: "custom-api-key", label: "Custom Provider" },
 ];
 
 // Build AUTH_GROUPS by joining the two source arrays.

@@ -20,57 +20,9 @@ const EDITOR_OPTIONS = {
     scrollbar: { vertical: "hidden", horizontal: "hidden" },
 };
 
-/* Deep merge: arrays are replaced, objects are recursively merged */
-function deepMerge(target, source) {
-    if (source === null || source === undefined) return target;
-    if (typeof source !== "object" || Array.isArray(source)) return source;
-    if (typeof target !== "object" || Array.isArray(target) || target === null) {
-        target = {};
-    }
-    const result = { ...target };
-    for (const key of Object.keys(source)) {
-        result[key] = deepMerge(result[key], source[key]);
-    }
-    return result;
-}
 
-/* Apply a patch operation to a JSON object */
-function applyPatch(obj, patch) {
-    if (!patch) return obj;
-    const { op, path: dotPath, value } = patch;
 
-    // Simple set at root level
-    if (!dotPath) return deepMerge(obj, value);
-
-    const keys = dotPath.split(".");
-    const last = keys.pop();
-
-    // Navigate to parent
-    let parent = obj;
-    for (const k of keys) {
-        if (parent[k] === undefined || parent[k] === null) parent[k] = {};
-        parent = parent[k];
-    }
-
-    if (op === "merge" || op === "set") {
-        if (typeof value === "object" && !Array.isArray(value) && typeof parent[last] === "object" && !Array.isArray(parent[last])) {
-            parent[last] = deepMerge(parent[last], value);
-        } else {
-            parent[last] = value;
-        }
-    } else if (op === "append" && Array.isArray(parent[last])) {
-        parent[last] = [...parent[last], value];
-    } else if (op === "delete") {
-        delete parent[last];
-    } else {
-        // Default: set
-        parent[last] = value;
-    }
-
-    return obj;
-}
-
-export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
+export default function ConfigPanel() {
     const [original, setOriginal] = useState("");
     const [content, setContent] = useState("");
     const [configPath, setConfigPath] = useState("");
@@ -107,26 +59,6 @@ export default function ConfigPanel({ pendingPatch, onPatchConsumed }) {
     };
 
     useEffect(() => { load(); }, []);
-
-    // Apply pending patch from Setup quick actions
-    const patchAppliedRef = useRef(false);
-    useEffect(() => {
-        if (!pendingPatch || patchAppliedRef.current) return;
-        if (!content && !original) return; // wait for load
-        try {
-            const obj = JSON.parse(content || "{}");
-            const patched = applyPatch(obj, pendingPatch);
-            const formatted = JSON.stringify(patched, null, 2);
-            setContent(formatted);
-            patchAppliedRef.current = true;
-            onPatchConsumed?.();
-        } catch {
-            onPatchConsumed?.();
-        }
-    }, [pendingPatch, content, original, onPatchConsumed]);
-
-    // Reset patch guard when patch changes
-    useEffect(() => { patchAppliedRef.current = false; }, [pendingPatch]);
 
     const handleFormat = () => {
         editorRef.current?.getAction("editor.action.formatDocument")?.run();

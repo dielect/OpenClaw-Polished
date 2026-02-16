@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import LoginPage from "./components/LoginPage";
 import SetupPanel from "./components/SetupPanel";
 import ApprovalsPanel from "./components/ApprovalsPanel";
@@ -35,14 +35,8 @@ const NAV = [
 export default function App() {
     const [authed, setAuthed] = useState(() => restoreAuth() && isAuthed());
     const [tab, setTab] = useState("setup");
-    const [pendingPatch, setPendingPatch] = useState(null);
     const status = useStatus(authed);
     const configured = status.data?.configured;
-
-    const navigateToConfig = useCallback((patch) => {
-        setPendingPatch(patch);
-        setTab("config");
-    }, []);
 
     // (no longer gating tabs on configured state)
 
@@ -134,14 +128,14 @@ export default function App() {
                 {tab === "terminal" ? (
                     <ConsolePanel />
                 ) : tab === "config" ? (
-                    <ConfigPanel pendingPatch={pendingPatch} onPatchConsumed={() => setPendingPatch(null)} />
+                    <ConfigPanel />
                 ) : tab === "approvals" ? (
                     <ApprovalsPanel />
                 ) : tab === "data" ? (
                     <DataPanel status={status} />
                 ) : (
                     <div className="max-w-3xl mx-auto px-8 py-6 w-full">
-                        <SetupPanel status={status} onNavigateConfig={navigateToConfig} />
+                        <SetupPanel status={status} />
                     </div>
                 )}
             </main>

@@ -61,28 +61,33 @@ const ENV_KEYS = [
     { key: "DEEPGRAM_API_KEY", detail: "Deepgram API key", section: "Tools & media" },
 ];
 
-let _envCompletionRegistered = false;
+let _envCompletionDisposable = null;
 
 function registerEnvLanguage(monaco) {
-    if (_envCompletionRegistered) return;
-    _envCompletionRegistered = true;
+    // Dispose previous registration (if any) so a fresh Monaco instance gets
+    // a working completion provider even after component remounts.
+    if (_envCompletionDisposable) {
+        _envCompletionDisposable.dispose();
+        _envCompletionDisposable = null;
+    }
 
-    // Register custom dotenv language
-    monaco.languages.register({ id: "dotenv" });
+    // Only register the language id once (idempotent in Monaco, but be explicit).
+    const registered = monaco.languages.getLanguages().some((l) => l.id === "dotenv");
+    if (!registered) {
+        monaco.languages.register({ id: "dotenv" });
 
-    monaco.languages.setMonarchTokensProvider("dotenv", {
-        tokenizer: {
-            root: [
-                // Comments
-                [/^\s*#.*$/, "comment"],
-                // KEY=VALUE
-                [/^([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)(.*)$/, ["variable", "delimiter", "string"]],
-            ],
-        },
-    });
+        monaco.languages.setMonarchTokensProvider("dotenv", {
+            tokenizer: {
+                root: [
+                    [/^\s*#.*$/, "comment"],
+                    [/^([A-Za-z_][A-Za-z0-9_]*)(\s*=\s*)(.*)$/, ["variable", "delimiter", "string"]],
+                ],
+            },
+        });
+    }
 
-    // Completion provider
-    monaco.languages.registerCompletionItemProvider("dotenv", {
+    // Re-register completion provider every time — returns a disposable.
+    _envCompletionDisposable = monaco.languages.registerCompletionItemProvider("dotenv", {
         triggerCharacters: [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ_'],
         provideCompletionItems(model, position) {
             const lineContent = model.getLineContent(position.lineNumber);

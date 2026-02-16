@@ -162,12 +162,24 @@ function sleep(ms) {
 }
 
 async function waitForGatewayReady(opts = {}) {
-  const timeoutMs = opts.timeoutMs ?? 20_000;
+  const timeoutMs = opts.timeoutMs ?? 30_000;
   const start = Date.now();
+  let attempts = 0;
   while (Date.now() - start < timeoutMs) {
-    if (await probeGateway()) return true;
-    await sleep(250);
+    // If the gateway process died while we were waiting, fail fast instead of
+    // burning through the full timeout with futile TCP probes.
+    if (!gatewayProc) {
+      console.error(`[gateway] process exited during readiness probe after ${Date.now() - start}ms (${attempts} probes)`);
+      return false;
+    }
+    attempts++;
+    if (await probeGateway()) {
+      console.log(`[gateway] ready after ${Date.now() - start}ms (${attempts} probes)`);
+      return true;
+    }
+    await sleep(300);
   }
+  console.error(`[gateway] not ready after ${timeoutMs}ms (${attempts} probes)`);
   return false;
 }
 
@@ -236,16 +248,24 @@ async function runDoctorBestEffort() {
   }
 }
 
-async function ensureGatewayRunning() {
+async function ensureGatewayRunning(opts = {}) {
   if (!isConfigured()) return { ok: false, reason: "not configured" };
   if (gatewayProc) return { ok: true };
+  const waitTimeoutMs = opts.timeoutMs ?? 30_000;
   if (!gatewayStarting) {
     gatewayStarting = (async () => {
       try {
         lastGatewayError = null;
         await startGateway();
-        const ready = await waitForGatewayReady({ timeoutMs: 20_000 });
+        const ready = await waitForGatewayReady({ timeoutMs: waitTimeoutMs });
         if (!ready) {
+          // If the process is still alive, it may just be slow to initialize.
+          // Don't kill it — let it continue starting. The next call to
+          // ensureGatewayRunning will find gatewayProc set and return early,
+          // or the auto-restart handler will take over if it crashes.
+          if (gatewayProc) {
+            console.warn("[gateway] probe timed out but process is still alive (PID may still be initializing)");
+          }
           throw new Error("Gateway did not become ready in time");
         }
       } catch (err) {
@@ -263,7 +283,7 @@ async function ensureGatewayRunning() {
   return { ok: true };
 }
 
-async function restartGateway() {
+async function restartGateway(opts = {}) {
   // Cancel any pending auto-restart so we don't race.
   if (_restartTimer) {
     clearTimeout(_restartTimer);
@@ -291,7 +311,7 @@ async function restartGateway() {
     });
     gatewayProc = null;
   }
-  return ensureGatewayRunning();
+  return ensureGatewayRunning(opts);
 }
 
 function requireSetupAuth(req, res, next) {
@@ -793,7 +813,7 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
 
     // --- Start gateway ---
     step("Starting gateway");
-    await restartGateway();
+    await restartGateway({ timeoutMs: 60_000 });
     stepDone("Starting gateway");
 
     step("Running doctor --fix");
@@ -802,7 +822,7 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
     stepDone("Running doctor --fix", fix.code === 0);
 
     step("Restarting gateway");
-    await restartGateway();
+    await restartGateway({ timeoutMs: 60_000 });
     stepDone("Restarting gateway");
 
     send("done", { ok: true, output: "Setup complete." });

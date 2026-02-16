@@ -250,13 +250,15 @@ export default function SetupForm({ status }) {
 
             <Separator />
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2">
                 {!status.data?.configured && (
                     <Button variant="outline" onClick={handleRun} disabled={running}>
-                        {running ? "Running..." : "Run setup"}
+                        {running ? "⏳ Running..." : "▶ Run setup"}
                     </Button>
                 )}
-                <Button variant="ghost" onClick={handleReset}>Reset</Button>
+                {status.data?.configured && (
+                    <Button variant="ghost" onClick={handleReset}>🔄 Reset</Button>
+                )}
             </div>
 
             {steps.length > 0 && (

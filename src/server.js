@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 
 import express from "express";
-import httpProxy from "http-proxy";
+import { createProxyServer } from "httpxy";
 import pty from "node-pty";
 import * as tar from "tar";
 
@@ -1399,7 +1399,7 @@ app.post("/setup/import", requireSetupAuth, async (req, res) => {
 });
 
 // Proxy everything else to the gateway.
-const proxy = httpProxy.createProxyServer({
+const proxy = createProxyServer({
   target: GATEWAY_TARGET,
   ws: true,
   xfwd: true,

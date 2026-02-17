@@ -163,9 +163,9 @@ export default function App() {
                 {tab === "terminal" ? (
                     <ConsolePanel />
                 ) : tab === "file-config" ? (
-                    <ConfigPanel fileId="config" />
+                    <ConfigPanel key="config" fileId="config" />
                 ) : tab === "file-env" ? (
-                    <ConfigPanel fileId="env" />
+                    <ConfigPanel key="env" fileId="env" />
                 ) : tab === "approvals" ? (
                     <ApprovalsPanel />
                 ) : tab === "data" ? (

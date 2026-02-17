@@ -258,7 +258,6 @@ export default function ConfigPanel({ fileId }) {
                     />
                 ) : (
                     <Editor
-                        key={fileId}
                         height="100%"
                         language={def.language}
                         value={content}

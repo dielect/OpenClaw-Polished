@@ -1376,8 +1376,9 @@ app.post("/setup/import", requireSetupAuth, async (req, res) => {
       file: tmpPath,
       cwd: dataRoot,
       gzip: true,
-      strict: true,
-      onwarn: () => { },
+      onwarn: (code, msg) => {
+        console.warn(`[import] tar warning (${code}): ${msg}`);
+      },
       filter: (p) => {
         // Allow only paths that look safe.
         return looksSafeTarPath(p);

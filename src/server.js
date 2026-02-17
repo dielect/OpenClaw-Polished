@@ -205,10 +205,41 @@ async function startGateway() {
     if (pids.length) await sleep(500);
   } catch { }
 
-  // Remove stale lock/pid files that a SIGKILL'd gateway may have left behind.
-  for (const name of ["gateway.lock", "gateway.pid", ".lock"]) {
-    const lockPath = path.join(STATE_DIR, name);
-    try { fs.rmSync(lockPath, { force: true }); } catch { }
+  // Remove stale gateway lock file that a SIGKILL'd process may have left behind.
+  // OpenClaw stores its lock at: <tmpdir>/openclaw-<uid>/gateway.<hash>.lock
+  // where <hash> is the first 8 chars of SHA1(configPath).
+  try {
+    const cfgHash = crypto.createHash("sha1").update(configPath()).digest("hex").slice(0, 8);
+    const uid = process.getuid ? process.getuid() : "";
+    const lockDir = path.join(os.tmpdir(), uid !== "" ? `openclaw-${uid}` : "openclaw");
+    const lockFile = path.join(lockDir, `gateway.${cfgHash}.lock`);
+    if (fs.existsSync(lockFile)) {
+      // Read the lock to check if the owning process is still alive.
+      let ownerAlive = false;
+      try {
+        const payload = JSON.parse(fs.readFileSync(lockFile, "utf8"));
+        if (payload.pid) {
+          process.kill(payload.pid, 0); // throws if process doesn't exist
+          ownerAlive = true;
+        }
+      } catch { }
+
+      if (!ownerAlive) {
+        fs.rmSync(lockFile, { force: true });
+        console.log(`[gateway] removed stale lock file: ${lockFile}`);
+      } else {
+        // Owner is alive but we need to restart — kill it.
+        try {
+          const payload = JSON.parse(fs.readFileSync(lockFile, "utf8"));
+          console.log(`[gateway] killing stale gateway owner pid ${payload.pid}`);
+          process.kill(payload.pid, "SIGKILL");
+          await sleep(500);
+          fs.rmSync(lockFile, { force: true });
+        } catch { }
+      }
+    }
+  } catch (err) {
+    console.warn(`[gateway] lock cleanup failed: ${err.message}`);
   }
 
   fs.mkdirSync(STATE_DIR, { recursive: true });

@@ -188,6 +188,28 @@ async function startGateway() {
   if (gatewayProc) return;
   if (!isConfigured()) throw new Error("Gateway cannot start: not configured");
 
+  // Clean up stale gateway processes that survived a SIGKILL.
+  // When the wrapper is killed with SIGKILL, the gateway child process may still
+  // be running and holding its lock file, causing "gateway already running" errors.
+  try {
+    const fuser = childProcess.spawnSync("fuser", [`${INTERNAL_GATEWAY_PORT}/tcp`], {
+      encoding: "utf8", timeout: 3000,
+    });
+    const pids = (fuser.stdout || "").trim().split(/\s+/).filter(Boolean).map(Number).filter(Boolean);
+    for (const pid of pids) {
+      if (pid === process.pid) continue;
+      console.log(`[gateway] killing stale process on port ${INTERNAL_GATEWAY_PORT}: pid ${pid}`);
+      try { process.kill(pid, "SIGKILL"); } catch { }
+    }
+    if (pids.length) await sleep(500);
+  } catch { }
+
+  // Remove stale lock/pid files that a SIGKILL'd gateway may have left behind.
+  for (const name of ["gateway.lock", "gateway.pid", ".lock"]) {
+    const lockPath = path.join(STATE_DIR, name);
+    try { fs.rmSync(lockPath, { force: true }); } catch { }
+  }
+
   fs.mkdirSync(STATE_DIR, { recursive: true });
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
 

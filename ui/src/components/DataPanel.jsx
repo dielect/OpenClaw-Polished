@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Section, Card, CardContent, Button } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
-import { importBackup, exportBackup } from "../api";
+import { importBackup, exportBackup, wipeVolume } from "../api";
 
 export default function DataPanel({ status }) {
     const { data } = status;
@@ -9,12 +9,20 @@ export default function DataPanel({ status }) {
 
     const [exporting, setExporting] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [wiping, setWiping] = useState(false);
     const [importLog, setImportLog] = useState("");
     const fileRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
     const showAlert = useCallback((title, description) => new Promise((resolve) => {
         setDialog({ title, description, alertOnly: true, onCancel: () => { setDialog(null); resolve(); } });
+    }), []);
+    const showConfirm = useCallback((title, description) => new Promise((resolve) => {
+        setDialog({
+            title, description, variant: "destructive", confirmLabel: "Wipe",
+            onConfirm: () => { setDialog(null); resolve(true); },
+            onCancel: () => { setDialog(null); resolve(false); },
+        });
     }), []);
 
     const handleExport = async () => {
@@ -41,6 +49,21 @@ export default function DataPanel({ status }) {
             setImportLog((p) => p + `Error: ${e}\n`);
         } finally {
             setImporting(false);
+        }
+    };
+
+    const handleWipe = async () => {
+        const ok = await showConfirm("Wipe /data volume", "This will permanently delete ALL data under /data and stop the gateway. This action cannot be undone.");
+        if (!ok) return;
+        setWiping(true);
+        try {
+            await wipeVolume();
+            status.refresh?.();
+            await showAlert("Volume wiped", "All contents under /data have been deleted. Please redeploy OpenClaw from the Railway console.");
+        } catch (e) {
+            await showAlert("Wipe failed", e.message);
+        } finally {
+            setWiping(false);
         }
     };
 
@@ -82,6 +105,17 @@ export default function DataPanel({ status }) {
                         {importLog}
                     </pre>
                 )}
+            </Section>
+
+            {/* Wipe volume */}
+            <Section title="Wipe /data volume" description="Permanently delete all contents under /data. The gateway will be stopped. Use this to start fresh.">
+                <Card>
+                    <CardContent className="flex items-center gap-4">
+                        <Button variant="destructive" size="sm" onClick={handleWipe} disabled={wiping}>
+                            {wiping ? "Wiping..." : "Wipe volume"}
+                        </Button>
+                    </CardContent>
+                </Card>
             </Section>
 
             {dialog && <ConfirmDialog open {...dialog} />}

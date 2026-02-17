@@ -1259,6 +1259,34 @@ app.post("/setup/api/reset", requireSetupAuth, async (_req, res) => {
   }
 });
 
+// Wipe the entire /data volume.
+app.post("/setup/api/wipe-volume", requireSetupAuth, async (_req, res) => {
+  try {
+    const dataRoot = "/data";
+    if (!isUnderDir(STATE_DIR, dataRoot) || !isUnderDir(WORKSPACE_DIR, dataRoot)) {
+      return res.status(400).type("text/plain").send("Wipe is only supported when state and workspace dirs are under /data.\n");
+    }
+
+    // Stop gateway first.
+    if (gatewayProc) {
+      try { gatewayProc.kill("SIGTERM"); } catch { }
+      await sleep(750);
+      gatewayProc = null;
+    }
+
+    // Delete everything under /data but keep the mount point itself.
+    for (const entry of fs.readdirSync(dataRoot)) {
+      fs.rmSync(path.join(dataRoot, entry), { recursive: true, force: true });
+    }
+
+    console.log("[wipe] deleted all contents under /data");
+    res.type("text/plain").send("OK - /data volume wiped. Please redeploy OpenClaw from the Railway console.\n");
+  } catch (err) {
+    console.error("[wipe]", err);
+    res.status(500).type("text/plain").send(String(err));
+  }
+});
+
 app.get("/setup/export", requireSetupAuth, async (_req, res) => {
   fs.mkdirSync(STATE_DIR, { recursive: true });
   fs.mkdirSync(WORKSPACE_DIR, { recursive: true });

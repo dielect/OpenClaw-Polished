@@ -225,6 +225,9 @@ export async function exportBackup() {
     a.click();
     URL.revokeObjectURL(url);
 }
+export function wipeVolume() {
+    return rawFetch("/setup/api/wipe-volume", { method: "POST" }).then((r) => r.text());
+}
 export function getTerminalWsUrl() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const token = btoa(`:${localStorage.getItem("openclaw_auth") || ""}`);

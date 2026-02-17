@@ -128,7 +128,6 @@ export default function ConfigPanel({ fileId }) {
     const [status, setStatus] = useState("");
     const [saving, setSaving] = useState(false);
     const [diffMode, setDiffMode] = useState(false);
-    const importRef = useRef(null);
     const editorRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
@@ -193,29 +192,6 @@ export default function ConfigPanel({ fileId }) {
         setDiffMode(false);
     };
 
-    const handleImportJson = () => {
-        importRef.current?.click();
-    };
-
-    const onImportFile = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            try {
-                const parsed = JSON.parse(reader.result);
-                setContent(JSON.stringify(parsed, null, 2));
-                setDiffMode(true);
-                setStatus("Imported — review diff and save to apply.");
-            } catch (err) {
-                setStatus(`Import error: invalid JSON — ${err.message}`);
-            }
-        };
-        reader.readAsText(file);
-        // Reset so the same file can be re-imported.
-        e.target.value = "";
-    };
-
     const handleEditorMount = (editor, monaco) => {
         editorRef.current = editor;
         if (fileId === "env") {
@@ -250,9 +226,6 @@ export default function ConfigPanel({ fileId }) {
                         </>
                     )}
                     <Button variant="ghost" size="sm" onClick={load}>Reload</Button>
-                    {fileId === "config" && editable && (
-                        <Button variant="ghost" size="sm" onClick={handleImportJson}>Import JSON</Button>
-                    )}
                     {!diffMode && editable && def.format && (
                         <Button variant="ghost" size="sm" onClick={handleFormat}>Format</Button>
                     )}
@@ -296,7 +269,6 @@ export default function ConfigPanel({ fileId }) {
             </div>
 
             {dialog && <ConfirmDialog open {...dialog} />}
-            <input ref={importRef} type="file" accept=".json,application/json" className="hidden" onChange={onImportFile} />
         </div>
     );
 }

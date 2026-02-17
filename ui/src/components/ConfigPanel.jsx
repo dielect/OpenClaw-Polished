@@ -258,8 +258,9 @@ export default function ConfigPanel({ fileId }) {
                     />
                 ) : (
                     <Editor
+                        key={fileId}
                         height="100%"
-                        defaultLanguage={def.language}
+                        language={def.language}
                         value={content}
                         onChange={(v) => editable && setContent(v || "")}
                         onMount={handleEditorMount}

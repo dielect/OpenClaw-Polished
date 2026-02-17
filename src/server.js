@@ -1390,9 +1390,16 @@ app.post("/setup/import", requireSetupAuth, async (req, res) => {
     // Migrate legacy .clawdbot directory to .openclaw if present.
     const legacyDir = path.join(dataRoot, ".clawdbot");
     const openclawDir = path.join(dataRoot, ".openclaw");
-    if (fs.existsSync(legacyDir) && !fs.existsSync(openclawDir)) {
-      fs.renameSync(legacyDir, openclawDir);
-      console.log("[import] renamed .clawdbot -> .openclaw");
+    if (fs.existsSync(legacyDir)) {
+      if (!fs.existsSync(openclawDir)) {
+        fs.renameSync(legacyDir, openclawDir);
+        console.log("[import] renamed .clawdbot -> .openclaw");
+      } else {
+        // Merge .clawdbot into .openclaw (overwrite existing files).
+        fs.cpSync(legacyDir, openclawDir, { recursive: true, force: true });
+        fs.rmSync(legacyDir, { recursive: true, force: true });
+        console.log("[import] merged .clawdbot into .openclaw and removed .clawdbot");
+      }
     }
 
     // Patch gateway auth token in openclaw.json to match current env.

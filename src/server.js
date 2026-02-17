@@ -1386,6 +1386,28 @@ app.post("/setup/import", requireSetupAuth, async (req, res) => {
 
     try { fs.rmSync(tmpPath, { force: true }); } catch { }
 
+    // Migrate legacy .clawdbot directory to .openclaw if present.
+    const legacyDir = path.join(dataRoot, ".clawdbot");
+    const openclawDir = path.join(dataRoot, ".openclaw");
+    if (fs.existsSync(legacyDir) && !fs.existsSync(openclawDir)) {
+      fs.renameSync(legacyDir, openclawDir);
+      console.log("[import] renamed .clawdbot -> .openclaw");
+    }
+
+    // Patch gateway auth token in openclaw.json to match current env.
+    const envToken = process.env.OPENCLAW_GATEWAY_TOKEN?.trim();
+    if (envToken) {
+      const cfgFile = path.join(openclawDir, "openclaw.json");
+      try {
+        const cfg = JSON.parse(fs.readFileSync(cfgFile, "utf8"));
+        if (cfg.gateway?.auth?.token) {
+          cfg.gateway.auth.token = envToken;
+          fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2) + "\n", "utf8");
+          console.log("[import] patched gateway.auth.token in openclaw.json");
+        }
+      } catch { }
+    }
+
     // Restart gateway after restore.
     if (isConfigured()) {
       await restartGateway();

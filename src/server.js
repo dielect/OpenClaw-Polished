@@ -121,6 +121,7 @@ function isConfigured() {
 let gatewayProc = null;
 let gatewayStarting = null;
 let _gatewayReady = false; // true only after probe confirms gateway is accepting connections
+let _intentionalKill = false; // true when restartGateway is actively killing the process
 
 // Debug breadcrumbs for common Railway failures (502 / "Application failed to respond").
 let lastGatewayError = null;
@@ -253,7 +254,8 @@ async function startGateway() {
     // Auto-restart with exponential backoff if the gateway crashes unexpectedly.
     // Only restart if still configured (user may have reset).
     // Don't restart on clean shutdown: SIGTERM (explicit kill) or code=0 (graceful exit).
-    if (isConfigured() && signal !== "SIGTERM" && code !== 0) {
+    // Don't restart if restartGateway is actively managing the lifecycle.
+    if (isConfigured() && signal !== "SIGTERM" && code !== 0 && !_intentionalKill) {
       scheduleGatewayRestart();
     }
   });
@@ -330,6 +332,7 @@ async function restartGateway(opts = {}) {
 
   if (gatewayProc) {
     const proc = gatewayProc;
+    _intentionalKill = true;
     try {
       proc.kill("SIGTERM");
     } catch {
@@ -342,11 +345,17 @@ async function restartGateway(opts = {}) {
       const killTimer = setTimeout(() => {
         proc.removeListener("exit", onExit);
         try { proc.kill("SIGKILL"); } catch { }
-        // Give SIGKILL a moment.
-        setTimeout(resolve, 500);
+        // Wait for the SIGKILL'd process to actually exit (up to 3s).
+        const onKillExit = () => { clearTimeout(killWait); resolve(); };
+        proc.once("exit", onKillExit);
+        const killWait = setTimeout(() => {
+          proc.removeListener("exit", onKillExit);
+          resolve();
+        }, 3_000);
       }, 5_000);
     });
     gatewayProc = null;
+    _intentionalKill = false;
   }
   return ensureGatewayRunning(opts);
 }

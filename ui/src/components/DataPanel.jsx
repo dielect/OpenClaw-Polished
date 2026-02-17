@@ -94,7 +94,7 @@ export default function DataPanel({ status }) {
                             className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80 file:cursor-pointer"
                         />
                         <div>
-                            <Button variant="destructive" size="sm" onClick={handleImport} disabled={importing}>
+                            <Button variant="outline" size="sm" onClick={handleImport} disabled={importing}>
                                 {importing ? "Importing..." : "Import backup"}
                             </Button>
                         </div>

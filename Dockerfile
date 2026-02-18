@@ -48,6 +48,9 @@ RUN apt-get update \
     g++ \
     curl \
     gpg \
+    vim \
+    jq \
+    ripgrep \
   && rm -rf /var/lib/apt/lists/*
 
 # Install Bun

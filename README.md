@@ -37,7 +37,7 @@ A polished fork of the [OpenClaw Railway Template](https://github.com/vignesh07/
 
 ## Deploy on Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/-fU_Ch?referralCode=xBN1Uf&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openclaw-3?referralCode=xBN1Uf&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 1. Create a new template from this repo
 2. Add a **Volume** mounted at `/data`

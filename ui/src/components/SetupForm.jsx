@@ -4,6 +4,100 @@ import RichSelect from "./RichSelect";
 import ConfirmDialog from "./ConfirmDialog";
 import { getAuthGroups, runSetupStream, resetSetup } from "../api";
 
+/* ── Horizontal Progress Stepper ── */
+function StepNode({ status }) {
+    const base = "flex items-center justify-center w-3.5 h-3.5 rounded-full transition-all duration-300 shrink-0";
+    if (status === "done") return (
+        <span className={`${base} bg-foreground text-background`}>
+            <svg width="8" height="8" viewBox="0 0 14 14" fill="none"><path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
+    );
+    if (status === "failed") return (
+        <span className={`${base} bg-foreground text-background`}>
+            <svg width="8" height="8" viewBox="0 0 14 14" fill="none"><path d="M4 4L10 10M10 4L4 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+        </span>
+    );
+    if (status === "running") return (
+        <span className="relative flex items-center justify-center w-3.5 h-3.5 shrink-0">
+            <span className="absolute inset-[-3px] rounded-full border border-foreground/20 animate-ping" />
+            <span className="w-2 h-2 rounded-full bg-foreground animate-pulse" />
+        </span>
+    );
+    // pending
+    return <span className={`${base} border-2 border-border`} />;
+}
+
+function SetupStepper({ steps, log, stepperRef }) {
+    const [showLog, setShowLog] = useState(false);
+    const n = steps.length;
+    // find the currently active step for the label below
+    const activeIdx = steps.findIndex((s) => s.status === "running");
+    const activeStep = activeIdx >= 0 ? steps[activeIdx] : null;
+
+    return (
+        <Card>
+            <div ref={stepperRef} />
+            <CardContent className="py-6">
+                {/* nodes row — circles with gap lines between them */}
+                <div className="flex items-center">
+                    {steps.map((s, i) => (
+                        <div key={s.label} className={`flex items-center ${i < n - 1 ? "flex-1" : ""}`}>
+                            {/* node with tooltip */}
+                            <div className="relative group">
+                                <StepNode status={s.status} />
+                                {/* tooltip on hover */}
+                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 rounded bg-foreground text-background text-[11px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                    {s.label}
+                                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-foreground" />
+                                </div>
+                            </div>
+                            {/* connector line with gap from circles */}
+                            {i < n - 1 && (
+                                <div className="flex-1 mx-2.5 h-px bg-border relative overflow-hidden">
+                                    <div
+                                        className="absolute inset-y-0 left-0 bg-foreground transition-all duration-500"
+                                        style={{ width: s.status === "done" ? "100%" : "0%" }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                {/* single active step label centered below */}
+                <div className="mt-3 text-center h-5">
+                    {activeStep && (
+                        <span className="text-xs text-muted-foreground animate-pulse">
+                            {activeStep.label}…
+                        </span>
+                    )}
+                    {!activeStep && steps.length > 0 && steps.every((s) => s.status === "done") && (
+                        <span className="text-xs text-muted-foreground">All steps completed</span>
+                    )}
+                    {!activeStep && steps.some((s) => s.status === "failed") && (
+                        <span className="text-xs text-muted-foreground">Setup encountered an error</span>
+                    )}
+                </div>
+
+                {/* collapsible log */}
+                {log && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                        <button
+                            type="button"
+                            onClick={() => setShowLog((v) => !v)}
+                            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        >
+                            <span className={`transition-transform ${showLog ? "rotate-90" : ""}`}>▶</span>
+                            {showLog ? "Hide logs" : "Show logs"}
+                        </button>
+                        {showLog && <LogOutput>{log}</LogOutput>}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function SetupForm({ status }) {
     const [groups, setGroups] = useState([]);
     const [apiKeyChoices, setApiKeyChoices] = useState(new Set());
@@ -28,6 +122,7 @@ export default function SetupForm({ status }) {
     const [steps, setSteps] = useState([]); // { label, status: 'running'|'done'|'failed' }
     const [setupDone, setSetupDone] = useState(false);
     const abortRef = useRef(null);
+    const stepperRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
     const showConfirm = useCallback((opts) => new Promise((resolve) => {
@@ -53,7 +148,21 @@ export default function SetupForm({ status }) {
         }
     }, [group, apiKeyChoices]);
 
+    const [errors, setErrors] = useState({});
+
+    useEffect(() => {
+        if (steps.length > 0) {
+            stepperRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }, [steps]);
+
     const handleRun = () => {
+        const e = {};
+        if (!authChoice) e.authChoice = "Please select an auth method.";
+        if (!authSecret.trim()) e.authSecret = "Please enter your API key or token.";
+        if (Object.keys(e).length) { setErrors(e); return; }
+        setErrors({});
+
         setRunning(true);
         setLog("");
         setSteps([]);
@@ -67,8 +176,17 @@ export default function SetupForm({ status }) {
                 customProviderModelId: customModel,
             },
             {
+                onPlan: ({ steps: planSteps }) => {
+                    setSteps(planSteps.map((label) => ({ label, status: "pending" })));
+                },
                 onStep: ({ label }) => {
-                    setSteps((prev) => [...prev, { label, status: "running" }]);
+                    setSteps((prev) => {
+                        // If already in plan, just mark running
+                        if (prev.find((s) => s.label === label)) {
+                            return prev.map((s) => s.label === label ? { ...s, status: "running" } : s);
+                        }
+                        return [...prev, { label, status: "running" }];
+                    });
                 },
                 onStepDone: ({ label, ok }) => {
                     setSteps((prev) =>
@@ -135,11 +253,13 @@ export default function SetupForm({ status }) {
                         </div>
                         <div className="space-y-2">
                             <Label>Auth method</Label>
-                            <RichSelect value={authChoice} onChange={setAuthChoice} options={authOptions} placeholder="Select auth method..." />
+                            <RichSelect value={authChoice} onChange={(v) => { setAuthChoice(v); setErrors((p) => ({ ...p, authChoice: undefined })); }} options={authOptions} placeholder="Select auth method..." />
+                            {errors.authChoice && <p className="text-xs text-destructive">{errors.authChoice}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label>Key / Token</Label>
-                            <Input type="password" value={authSecret} onChange={(e) => setAuthSecret(e.target.value)} placeholder="Paste API key or token" className="font-mono" />
+                            <Input type="password" value={authSecret} onChange={(e) => { setAuthSecret(e.target.value); setErrors((p) => ({ ...p, authSecret: undefined })); }} placeholder="Paste API key or token" className="font-mono" error={!!errors.authSecret} />
+                            {errors.authSecret && <p className="text-xs text-destructive">{errors.authSecret}</p>}
                         </div>
                         <div className="space-y-2">
                             <Label>Wizard flow</Label>
@@ -264,19 +384,8 @@ export default function SetupForm({ status }) {
             </div>
 
             {steps.length > 0 && !setupDone && (
-                <div className="space-y-1.5">
-                    {steps.map((s) => (
-                        <div key={s.label} className="flex items-center gap-2 text-sm">
-                            {s.status === "running" && <span className="text-foreground animate-pulse">●</span>}
-                            {s.status === "done" && <span className="text-emerald-500">✓</span>}
-                            {s.status === "failed" && <span className="text-red-500">✗</span>}
-                            <span className={s.status === "running" ? "text-foreground" : "text-muted-foreground"}>{s.label}</span>
-                        </div>
-                    ))}
-                </div>
+                <SetupStepper steps={steps} log={log} stepperRef={stepperRef} />
             )}
-
-            {!setupDone && <LogOutput>{log}</LogOutput>}
 
             {dialog && <ConfirmDialog open {...dialog} />}
         </div>

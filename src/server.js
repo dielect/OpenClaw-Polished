@@ -771,6 +771,20 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
       return;
     }
 
+    // --- Build and send step plan so the UI can render all nodes upfront ---
+    const plan = [
+      "Running onboard",
+      "Configuring gateway auth",
+      "Configuring gateway network",
+      "Configuring trusted proxies",
+    ];
+    if (payload.customProviderId?.trim() && payload.customProviderBaseUrl?.trim()) plan.push("Configuring custom provider");
+    if (payload.telegramToken?.trim()) plan.push("Configuring Telegram");
+    if (payload.discordToken?.trim()) plan.push("Configuring Discord");
+    if (payload.slackBotToken?.trim() || payload.slackAppToken?.trim()) plan.push("Configuring Slack");
+    plan.push("Starting gateway", "Running doctor --fix", "Restarting gateway");
+    send("plan", { steps: plan });
+
     step("Running onboard");
     const onboard = await runCmd(OPENCLAW_NODE, clawArgs(onboardArgs));
     const ok = onboard.code === 0 && isConfigured();

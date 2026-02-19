@@ -105,7 +105,7 @@ export function runSetup(payload) {
  * Stream setup progress via SSE. Calls onStep/onStepDone/onLog/onDone as events arrive.
  * Returns an abort function.
  */
-export function runSetupStream(payload, { onStep, onStepDone, onLog, onDone, onError }) {
+export function runSetupStream(payload, { onPlan, onStep, onStepDone, onLog, onDone, onError }) {
     const controller = new AbortController();
 
     rawFetch("/setup/api/run", {
@@ -114,6 +114,11 @@ export function runSetupStream(payload, { onStep, onStepDone, onLog, onDone, onE
         body: JSON.stringify(payload),
         signal: controller.signal,
     }).then(async (res) => {
+        if (!res.ok) {
+            const text = await res.text();
+            onError?.(text || `HTTP ${res.status}`);
+            return;
+        }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buf = "";
@@ -133,7 +138,8 @@ export function runSetupStream(payload, { onStep, onStepDone, onLog, onDone, onE
                 } else if (line.startsWith("data: ") && currentEvent) {
                     try {
                         const data = JSON.parse(line.slice(6));
-                        if (currentEvent === "step") onStep?.(data);
+                        if (currentEvent === "plan") onPlan?.(data);
+                        else if (currentEvent === "step") onStep?.(data);
                         else if (currentEvent === "stepDone") onStepDone?.(data);
                         else if (currentEvent === "log") onLog?.(data);
                         else if (currentEvent === "done") onDone?.(data);

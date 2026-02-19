@@ -39,7 +39,7 @@ export function CardHeader({ title, description }) {
 }
 
 export function CardContent({ children, className = "" }) {
-    return <div className={`px-6 py-4 ${className}`}>{children}</div>;
+    return <div className={`px-6 py-6 ${className}`}>{children}</div>;
 }
 
 export function CardRow({ label, description, children }) {
@@ -118,7 +118,7 @@ export function Select({ value, onChange, options, className = "" }) {
 
 export function Label({ children, className = "", ...props }) {
     return (
-        <label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`} {...props}>
+        <label className={`block text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`} {...props}>
             {children}
         </label>
     );

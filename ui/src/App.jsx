@@ -25,16 +25,16 @@ function StatusLight({ active, loading }) {
 }
 
 const NAV = [
-    { id: "setup", label: "Setup" },
-    { id: "approvals", label: "Approvals" },
+    { id: "setup", label: "Setup", description: "Configure gateway connection and check service health" },
+    { id: "approvals", label: "Approvals", description: "Review and manage pending device approval requests" },
     { id: "terminal", label: "Terminal" },
     {
         id: "files", label: "Files Config", children: [
-            { id: "file-config", label: "openclaw" },
-            { id: "file-env", label: "env" },
+            { id: "file-config", label: "openclaw", ext: ".json" },
+            { id: "file-env", label: "env", ext: ".env" },
         ]
     },
-    { id: "data", label: "Backup & Restore" },
+    { id: "data", label: "Backup & Restore", description: "Manage volume data, backups and restore points" },
 ];
 
 export default function App() {
@@ -55,24 +55,24 @@ export default function App() {
 
     const isFullBleed = tab === "terminal" || tab === "file-config" || tab === "file-env";
 
-    // Find the label for the current tab (including children)
-    const findLabel = (id) => {
+    // Find the label and description for the current tab (including children)
+    const findTab = (id) => {
         for (const item of NAV) {
-            if (item.id === id) return item.label;
+            if (item.id === id) return item;
             if (item.children) {
                 const child = item.children.find((c) => c.id === id);
-                if (child) return child.label;
+                if (child) return child;
             }
         }
-        return "";
+        return {};
     };
 
     return (
         <div className="flex h-screen bg-background text-foreground font-sans">
             {/* Sidebar */}
-            <aside className="w-52 shrink-0 border-r border-border flex flex-col">
-                <div className="h-14 flex items-center gap-2 px-6 border-b border-border">
-                    <span className="text-sm font-semibold tracking-tight">OpenClaw</span>
+            <aside className="w-60 shrink-0 border-r border-border flex flex-col">
+                <div className="h-14 flex items-center gap-2 px-5 border-b border-border">
+                    <span className="text-base font-semibold tracking-widest uppercase">OpenClaw</span>
                     {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground leading-none">
                             {status.data.openclawVersion}
@@ -93,24 +93,33 @@ export default function App() {
                         </a>
                     </div>
                 )}
-                <nav className="flex-1 py-2 px-3 space-y-1">
+                <nav className="flex-1 py-3 px-3 space-y-0.5">
                     {NAV.map((item) =>
                         item.children ? (
-                            <div key={item.id}>
-                                <span className="block px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            <div key={item.id} className="pt-3 first:pt-0">
+                                <span className="block px-3 pb-1 text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-widest">
                                     {item.label}
                                 </span>
-                                <div className="space-y-0.5 pl-2">
+                                <div className="space-y-1 pl-1">
                                     {item.children.map((child) => (
                                         <button
                                             key={child.id}
                                             onClick={() => setTab(child.id)}
-                                            className={`w-full flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${tab === child.id
-                                                ? "bg-accent text-accent-foreground cursor-pointer"
-                                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                            className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] tracking-wide font-medium transition-all ${tab === child.id
+                                                ? "bg-gradient-to-r from-accent to-transparent text-foreground font-semibold cursor-pointer"
+                                                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground cursor-pointer"
                                                 }`}
                                         >
-                                            {child.label}
+                                            <svg className="w-4 h-4 shrink-0 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                <polyline points="14 2 14 8 20 8" />
+                                            </svg>
+                                            <span className="font-mono text-[12px]">{child.label}</span>
+                                            {child.ext && (
+                                                <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground leading-none">
+                                                    {child.ext}
+                                                </span>
+                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -119,9 +128,9 @@ export default function App() {
                             <button
                                 key={item.id}
                                 onClick={() => setTab(item.id)}
-                                className={`w-full flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${tab === item.id
-                                    ? "bg-accent text-accent-foreground cursor-pointer"
-                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                className={`w-full flex items-center rounded-lg px-3 py-2.5 text-[13px] tracking-wide font-medium transition-all ${tab === item.id
+                                    ? "bg-gradient-to-r from-accent to-transparent text-foreground font-semibold cursor-pointer"
+                                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground cursor-pointer"
                                     }`}
                             >
                                 {item.label}
@@ -132,7 +141,7 @@ export default function App() {
                 <div className="p-3 border-t border-border">
                     <button
                         onClick={() => { clearAuth(); setAuthed(false); }}
-                        className="w-full flex items-center rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                        className="w-full flex items-center rounded-md px-3 py-2.5 text-[13px] tracking-wide text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
                     >
                         Sign out
                     </button>
@@ -143,7 +152,7 @@ export default function App() {
             <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
                 {!isFullBleed && (
                     <div className="h-14 flex items-center justify-between px-8 border-b border-border shrink-0">
-                        <h2 className="text-sm font-semibold">{findLabel(tab)}</h2>
+                        <p className="text-sm text-muted-foreground">{findTab(tab).description || findTab(tab).label}</p>
                         {tab === "setup" && (
                             <div className="flex items-center gap-2">
                                 <StatusLight active={configured && status.data?.gatewayReachable} loading={status.loading} />

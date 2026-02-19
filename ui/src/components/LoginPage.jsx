@@ -31,7 +31,7 @@ export default function LoginPage({ onLogin }) {
         <div className="min-h-screen bg-background flex items-center justify-center font-sans">
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
-                    <h1 className="text-2xl font-semibold tracking-tight">OpenClaw</h1>
+                    <h1 className="text-2xl font-semibold tracking-widest uppercase">OpenClaw</h1>
                     <p className="text-sm text-muted-foreground mt-2">Enter your setup password to continue</p>
                 </div>
 

@@ -14,7 +14,7 @@ export function PageTitle({ children, description }) {
 export function Section({ title, description, children }) {
     return (
         <div className="mb-8">
-            {title && <h2 className="text-base font-semibold tracking-tight mb-1">{title}</h2>}
+            {title && <h2 className="text-base font-semibold font-heading tracking-tight mb-1">{title}</h2>}
             {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
             {children}
         </div>

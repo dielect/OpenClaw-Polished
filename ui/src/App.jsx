@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoginPage from "./components/LoginPage";
 import SetupPanel from "./components/SetupPanel";
 import ApprovalsPanel from "./components/ApprovalsPanel";
@@ -7,6 +7,7 @@ import ConfigPanel from "./components/ConfigPanel";
 import DataPanel from "./components/DataPanel";
 import { useStatus } from "./hooks/useStatus";
 import { isAuthed, restoreAuth, clearAuth } from "./api";
+import { useToast } from "./components/Toast";
 
 function StatusLight({ active, loading }) {
     if (loading) {
@@ -42,6 +43,12 @@ export default function App() {
     const [tab, setTab] = useState("setup");
     const status = useStatus(authed);
     const configured = status.data?.configured;
+    const toast = useToast();
+
+    const switchTab = useCallback((id) => {
+        toast.dismissAll();
+        setTab(id);
+    }, [toast]);
 
     useEffect(() => {
         const handler = () => setAuthed(false);
@@ -72,7 +79,7 @@ export default function App() {
             {/* Sidebar */}
             <aside className="w-60 shrink-0 border-r border-border flex flex-col">
                 <div className="h-14 flex items-center gap-2 px-5 border-b border-border">
-                    <span className="text-base font-semibold tracking-widest uppercase">OpenClaw</span>
+                    <span className="text-base font-semibold font-heading tracking-widest uppercase">OpenClaw</span>
                     {configured && status.data?.openclawVersion && status.data.openclawVersion.length <= 50 && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground leading-none">
                             {status.data.openclawVersion}
@@ -104,7 +111,7 @@ export default function App() {
                                     {item.children.map((child) => (
                                         <button
                                             key={child.id}
-                                            onClick={() => setTab(child.id)}
+                                            onClick={() => switchTab(child.id)}
                                             className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] tracking-wide font-medium transition-all ${tab === child.id
                                                 ? "bg-gradient-to-r from-accent to-transparent text-foreground font-semibold cursor-pointer"
                                                 : "text-muted-foreground hover:bg-accent/50 hover:text-foreground cursor-pointer"
@@ -127,7 +134,7 @@ export default function App() {
                         ) : (
                             <button
                                 key={item.id}
-                                onClick={() => setTab(item.id)}
+                                onClick={() => switchTab(item.id)}
                                 className={`w-full flex items-center rounded-lg px-3 py-2.5 text-[13px] tracking-wide font-medium transition-all ${tab === item.id
                                     ? "bg-gradient-to-r from-accent to-transparent text-foreground font-semibold cursor-pointer"
                                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground cursor-pointer"

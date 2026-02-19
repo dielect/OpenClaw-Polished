@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Section, Card, CardContent, Button, Input, Label, Badge } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
 import { approvePairing, getPendingDevices, approveDevice } from "../api";
+import { useToast } from "./Toast";
 
 /* ── Error display with collapsible stack trace ── */
 function ErrorBlock({ message }) {
@@ -226,21 +227,11 @@ export default function ApprovalsPanel() {
     const [pending, setPending] = useState([]);
     const [paired, setPaired] = useState([]);
     const [devicesLoading, setDevicesLoading] = useState(false);
-    const [devicesLog, setDevicesLog] = useState("");
     const [approvingId, setApprovingId] = useState(null);
     const [dialog, setDialog] = useState(null);
     const didMount = useRef(false);
-    const devicesLogTimer = useRef(null);
     const pairingLogTimer = useRef(null);
-
-    // Auto-clear error logs after 8 seconds
-    const setDevicesLogAuto = useCallback((msg) => {
-        setDevicesLog(msg);
-        clearTimeout(devicesLogTimer.current);
-        if (msg && /^Error:/i.test(msg)) {
-            devicesLogTimer.current = setTimeout(() => setDevicesLog(""), 8000);
-        }
-    }, []);
+    const toast = useToast();
 
     const appendPairingLog = useCallback((msg) => {
         setPairingLog((p) => (p ? p + "\n" : "") + msg);
@@ -256,20 +247,19 @@ export default function ApprovalsPanel() {
 
     const refreshDevices = useCallback(async () => {
         setDevicesLoading(true);
-        setDevicesLogAuto("");
         try {
             const d = await getPendingDevices();
             setPending(d.pending || []);
             setPaired(d.paired || []);
             if (!d.pending?.length && !d.paired?.length) {
-                setDevicesLogAuto("No device requests found.");
+                toast("No device requests found.", { duration: 4000 });
             }
         } catch (e) {
-            setDevicesLogAuto(`Error: ${e}`);
+            toast(`Error: ${e}`, { variant: "error", duration: 8000 });
         } finally {
             setDevicesLoading(false);
         }
-    }, [setDevicesLogAuto]);
+    }, [toast]);
 
     // Auto-fetch on mount
     useEffect(() => {
@@ -289,10 +279,10 @@ export default function ApprovalsPanel() {
         setApprovingId(id);
         try {
             const r = await approveDevice(id);
-            setDevicesLogAuto(r.output || "Approved.");
+            toast(r.output || "Approved.", { duration: 4000 });
             refreshDevices();
         } catch (e) {
-            setDevicesLogAuto(`Error: ${e}`);
+            toast(`Error: ${e}`, { variant: "error", duration: 8000 });
         } finally {
             setApprovingId(null);
         }
@@ -313,7 +303,7 @@ export default function ApprovalsPanel() {
             {/* Device pairing */}
             <div className="mb-8">
                 <div className="flex items-center justify-between mb-1">
-                    <h2 className="text-base font-semibold tracking-tight">Device pairing</h2>
+                    <h2 className="text-base font-semibold font-heading tracking-tight">Device pairing</h2>
                     <button
                         onClick={refreshDevices}
                         disabled={devicesLoading}
@@ -351,12 +341,6 @@ export default function ApprovalsPanel() {
                             ))}
                         </Card>
                     </div>
-                )}
-
-                {devicesLog && (
-                    /^Error:/i.test(devicesLog)
-                        ? <ErrorBlock message={devicesLog} />
-                        : <p className="text-xs text-muted-foreground mt-2">{devicesLog}</p>
                 )}
             </div>
 

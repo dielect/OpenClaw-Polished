@@ -7,6 +7,7 @@ function ImportDialog({ open, onClose, onDone }) {
     const fileRef = useRef(null);
     const [importing, setImporting] = useState(false);
     const [log, setLog] = useState("");
+    const [fileName, setFileName] = useState("");
 
     const handleImport = async () => {
         const file = fileRef.current?.files?.[0];
@@ -39,8 +40,19 @@ function ImportDialog({ open, onClose, onDone }) {
                         ref={fileRef}
                         type="file"
                         accept=".tar.gz,application/gzip"
-                        className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80 file:cursor-pointer"
+                        className="hidden"
+                        onChange={() => setFileName(fileRef.current?.files?.[0]?.name || "")}
                     />
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => fileRef.current?.click()}
+                            className="rounded-md bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80 cursor-pointer"
+                        >
+                            Choose file
+                        </button>
+                        <span className="text-sm text-muted-foreground">{fileName || "No file chosen"}</span>
+                    </div>
                 </div>
                 {log && (
                     <pre className="mt-3 rounded-md border border-border bg-muted p-3 text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto text-foreground/80">

@@ -11,6 +11,7 @@ export default function DataPanel({ status }) {
     const [importing, setImporting] = useState(false);
     const [wiping, setWiping] = useState(false);
     const [importLog, setImportLog] = useState("");
+    const [fileName, setFileName] = useState("");
     const fileRef = useRef(null);
 
     const [dialog, setDialog] = useState(null);
@@ -91,8 +92,19 @@ export default function DataPanel({ status }) {
                             ref={fileRef}
                             type="file"
                             accept=".tar.gz,application/gzip"
-                            className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80 file:cursor-pointer"
+                            className="hidden"
+                            onChange={() => setFileName(fileRef.current?.files?.[0]?.name || "")}
                         />
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => fileRef.current?.click()}
+                                className="rounded-md bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-secondary/80 cursor-pointer"
+                            >
+                                Choose file
+                            </button>
+                            <span className="text-sm text-muted-foreground">{fileName || "No file chosen"}</span>
+                        </div>
                         <div>
                             <Button variant="outline" size="sm" onClick={handleImport} disabled={importing}>
                                 {importing ? "Importing..." : "Import backup"}

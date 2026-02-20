@@ -299,9 +299,6 @@ export default function ApprovalsPanel() {
             const d = await getPendingDevices();
             setPending(d.pending || []);
             setPaired(d.paired || []);
-            if (!d.pending?.length && !d.paired?.length) {
-                toast("No device requests found.", { duration: 4000 });
-            }
         } catch (e) {
             toast(`Error: ${e}`, { variant: "error", duration: 8000 });
         } finally {
@@ -326,8 +323,7 @@ export default function ApprovalsPanel() {
         if (!ok) return;
         setBusyId(id);
         try {
-            const r = await approveDevice(id);
-            toast(r.output || "Approved.", { duration: 4000 });
+            await approveDevice(id);
             refreshDevices();
         } catch (e) {
             toast(`Error: ${e}`, { variant: "error", duration: 8000 });
@@ -346,8 +342,7 @@ export default function ApprovalsPanel() {
         if (!ok) return;
         setBusyId(id);
         try {
-            const r = await rejectDevice(id);
-            toast(r.output || "Rejected.", { duration: 4000 });
+            await rejectDevice(id);
             refreshDevices();
         } catch (e) {
             toast(`Error: ${e}`, { variant: "error", duration: 8000 });
@@ -367,8 +362,7 @@ export default function ApprovalsPanel() {
         if (!ok) return;
         setBusyId(device.deviceId);
         try {
-            const r = await revokeDevice(device.deviceId, role);
-            toast(r.output || "Revoked.", { duration: 4000 });
+            await revokeDevice(device.deviceId, role);
             refreshDevices();
         } catch (e) {
             toast(`Error: ${e}`, { variant: "error", duration: 8000 });

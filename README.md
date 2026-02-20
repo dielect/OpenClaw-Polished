@@ -91,6 +91,19 @@ docker run --rm -p 8080:8080 \
 
 Check logs for the generated `SETUP_PASSWORD`, then open `http://localhost:8080/setup`.
 
+## Persistent global tools
+
+The Docker image pre-configures npm, pnpm, bun, and uv to store global installs and caches on the Railway volume (`/data`). This means any tools you install at runtime (e.g. `npm i -g`, `pnpm add -g`, `bun install -g`, `uvx`) will survive redeploys.
+
+| Tool | Install path | Cache path |
+|---|---|---|
+| npm | `/data/npm` | `/data/npm-cache` |
+| pnpm | `/data/pnpm` | `/data/pnpm-store` |
+| bun | `/data/bun` | `/data/bun-cache` |
+| uv / uvx | `/data/uv-tools` | `/data/uv-cache` |
+
+> **Prerequisite:** a Railway Volume must be mounted at `/data`. Without it these paths won't exist and global installs will fail.
+
 ## Troubleshooting
 
 ### "disconnected (1008): pairing required"

@@ -73,6 +73,22 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 # `openclaw update` expects pnpm. Provide it in the runtime image.
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
+# Persist user-installed tools across deploys by targeting the Railway volume (/data).
+# npm
+ENV NPM_CONFIG_PREFIX=/data/npm
+ENV NPM_CONFIG_CACHE=/data/npm-cache
+# pnpm
+ENV PNPM_HOME=/data/pnpm
+ENV PNPM_STORE_DIR=/data/pnpm-store
+# bun
+ENV BUN_INSTALL_DIR=/data/bun
+ENV BUN_INSTALL_CACHE_DIR=/data/bun-cache
+# uv / uvx
+ENV UV_TOOL_DIR=/data/uv-tools
+ENV UV_CACHE_DIR=/data/uv-cache
+
+ENV PATH="/data/npm/bin:/data/pnpm:/data/bun/bin:/data/uv-tools/bin:${PATH}"
+
 WORKDIR /app
 
 # Wrapper deps (includes node-pty which needs native compilation)

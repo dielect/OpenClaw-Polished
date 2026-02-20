@@ -1223,6 +1223,25 @@ app.post("/setup/api/devices/approve", requireSetupAuth, async (req, res) => {
   return res.status(r.code === 0 ? 200 : 500).json({ ok: r.code === 0, output: redactSecrets(r.output) });
 });
 
+app.post("/setup/api/devices/reject", requireSetupAuth, async (req, res) => {
+  const requestId = String((req.body && req.body.requestId) || "").trim();
+  if (!requestId) return res.status(400).json({ ok: false, error: "Missing device request ID" });
+  if (!/^[A-Za-z0-9_-]+$/.test(requestId)) return res.status(400).json({ ok: false, error: "Invalid device request ID" });
+  const r = await runCmd(OPENCLAW_NODE, clawArgs(["devices", "reject", requestId]));
+  return res.status(r.code === 0 ? 200 : 500).json({ ok: r.code === 0, output: redactSecrets(r.output) });
+});
+
+app.post("/setup/api/devices/revoke", requireSetupAuth, async (req, res) => {
+  const deviceId = String((req.body && req.body.deviceId) || "").trim();
+  const role = String((req.body && req.body.role) || "").trim();
+  if (!deviceId) return res.status(400).json({ ok: false, error: "Missing device ID" });
+  if (!role) return res.status(400).json({ ok: false, error: "Missing role" });
+  if (!/^[A-Za-z0-9_-]+$/.test(deviceId)) return res.status(400).json({ ok: false, error: "Invalid device ID" });
+  if (!/^[A-Za-z0-9_.-]+$/.test(role)) return res.status(400).json({ ok: false, error: "Invalid role" });
+  const r = await runCmd(OPENCLAW_NODE, clawArgs(["devices", "revoke", "--device", deviceId, "--role", role]));
+  return res.status(r.code === 0 ? 200 : 500).json({ ok: r.code === 0, output: redactSecrets(r.output) });
+});
+
 app.post("/setup/api/reset", requireSetupAuth, async (_req, res) => {
   // Reset: stop gateway (frees memory) + delete config file(s) so /setup can rerun.
   // Keep credentials/sessions/workspace by default.

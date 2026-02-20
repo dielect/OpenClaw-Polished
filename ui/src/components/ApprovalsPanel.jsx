@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Section, Card, CardContent, Button, Input, Label, Badge } from "./ui";
 import ConfirmDialog from "./ConfirmDialog";
-import { approvePairing, getPendingDevices, approveDevice } from "../api";
+import { approvePairing, getPendingDevices, approveDevice, rejectDevice, revokeDevice } from "../api";
 import { useToast } from "./Toast";
 
 /* ── Error display with collapsible stack trace ── */
@@ -199,7 +199,7 @@ function timeAgo(ms) {
 }
 
 /* ── Pending device request row ── */
-function PendingDeviceRow({ device, onApprove, approving }) {
+function PendingDeviceRow({ device, onApprove, onReject, busy }) {
     const roles = device.roles ? device.roles.join(", ") : (device.role || "");
 
     return (
@@ -218,15 +218,20 @@ function PendingDeviceRow({ device, onApprove, approving }) {
                     {device.ts && <span>Requested: {timeAgo(device.ts)}</span>}
                 </div>
             </div>
-            <Button variant="default" size="sm" onClick={() => onApprove(device.requestId)} disabled={approving} className="shrink-0">
-                {approving ? "Approving..." : "Approve"}
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={() => onReject(device.requestId)} disabled={busy}>
+                    Reject
+                </Button>
+                <Button variant="default" size="sm" onClick={() => onApprove(device.requestId)} disabled={busy}>
+                    Approve
+                </Button>
+            </div>
         </div>
     );
 }
 
 /* ── Paired device row ── */
-function PairedDeviceRow({ device }) {
+function PairedDeviceRow({ device, onRevoke, busy }) {
     const roles = device.roles ? device.roles.join(", ") : "";
     const scopes = device.scopes ? device.scopes.join(", ") : "";
     const tokenCount = Array.isArray(device.tokens) ? device.tokens.length : null;
@@ -236,23 +241,30 @@ function PairedDeviceRow({ device }) {
 
     return (
         <div className="px-4 py-3 border-b border-border last:border-b-0 space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded break-all" title={device.deviceId}>{shortId(device.deviceId)}</code>
-                {device.platform && <Badge variant="outline">{device.platform}</Badge>}
-                {device.clientMode && <Badge variant="outline">{device.clientMode}</Badge>}
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                {roles && <span>Roles: {roles}</span>}
-                {scopes && <span>Scopes: {scopes}</span>}
-                {tokenCount != null && <span>Tokens: {tokenCount}</span>}
-                {device.remoteIp && <span>IP: <span className="font-mono">{device.remoteIp}</span></span>}
-            </div>
-            {(device.approvedAtMs || lastUsed) && (
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                    {device.approvedAtMs && <span>Approved: {timeAgo(device.approvedAtMs)}</span>}
-                    {lastUsed > 0 && <span>Last used: {timeAgo(lastUsed)}</span>}
+            <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded break-all" title={device.deviceId}>{shortId(device.deviceId)}</code>
+                        {device.platform && <Badge variant="outline">{device.platform}</Badge>}
+                        {device.clientMode && <Badge variant="outline">{device.clientMode}</Badge>}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                        {roles && <span>Roles: {roles}</span>}
+                        {scopes && <span>Scopes: {scopes}</span>}
+                        {tokenCount != null && <span>Tokens: {tokenCount}</span>}
+                        {device.remoteIp && <span>IP: <span className="font-mono">{device.remoteIp}</span></span>}
+                    </div>
+                    {(device.approvedAtMs || lastUsed) && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                            {device.approvedAtMs && <span>Approved: {timeAgo(device.approvedAtMs)}</span>}
+                            {lastUsed > 0 && <span>Last used: {timeAgo(lastUsed)}</span>}
+                        </div>
+                    )}
                 </div>
-            )}
+                <Button variant="outline" size="sm" onClick={() => onRevoke(device)} disabled={busy} className="shrink-0 text-destructive hover:text-destructive">
+                    Revoke
+                </Button>
+            </div>
         </div>
     );
 }
@@ -263,7 +275,7 @@ export default function ApprovalsPanel() {
     const [pending, setPending] = useState([]);
     const [paired, setPaired] = useState([]);
     const [devicesLoading, setDevicesLoading] = useState(false);
-    const [approvingId, setApprovingId] = useState(null);
+    const [busyId, setBusyId] = useState(null);
     const [dialog, setDialog] = useState(null);
     const didMount = useRef(false);
     const pairingLogTimer = useRef(null);
@@ -312,7 +324,7 @@ export default function ApprovalsPanel() {
             confirmLabel: "Approve",
         });
         if (!ok) return;
-        setApprovingId(id);
+        setBusyId(id);
         try {
             const r = await approveDevice(id);
             toast(r.output || "Approved.", { duration: 4000 });
@@ -320,7 +332,48 @@ export default function ApprovalsPanel() {
         } catch (e) {
             toast(`Error: ${e}`, { variant: "error", duration: 8000 });
         } finally {
-            setApprovingId(null);
+            setBusyId(null);
+        }
+    };
+
+    const handleRejectDevice = async (id) => {
+        const ok = await showConfirm({
+            title: "Reject device?",
+            description: `Reject device request: ${id}`,
+            confirmLabel: "Reject",
+            variant: "destructive",
+        });
+        if (!ok) return;
+        setBusyId(id);
+        try {
+            const r = await rejectDevice(id);
+            toast(r.output || "Rejected.", { duration: 4000 });
+            refreshDevices();
+        } catch (e) {
+            toast(`Error: ${e}`, { variant: "error", duration: 8000 });
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const handleRevokeDevice = async (device) => {
+        const role = device.role || (device.roles && device.roles[0]) || "";
+        const ok = await showConfirm({
+            title: "Revoke device?",
+            description: `Revoke role "${role}" for device: ${shortId(device.deviceId)}`,
+            confirmLabel: "Revoke",
+            variant: "destructive",
+        });
+        if (!ok) return;
+        setBusyId(device.deviceId);
+        try {
+            const r = await revokeDevice(device.deviceId, role);
+            toast(r.output || "Revoked.", { duration: 4000 });
+            refreshDevices();
+        } catch (e) {
+            toast(`Error: ${e}`, { variant: "error", duration: 8000 });
+        } finally {
+            setBusyId(null);
         }
     };
 
@@ -360,7 +413,7 @@ export default function ApprovalsPanel() {
                         </h4>
                         <Card>
                             {pending.map((d) => (
-                                <PendingDeviceRow key={d.requestId} device={d} onApprove={handleApproveDevice} approving={approvingId === d.requestId} />
+                                <PendingDeviceRow key={d.requestId} device={d} onApprove={handleApproveDevice} onReject={handleRejectDevice} busy={busyId === d.requestId} />
                             ))}
                         </Card>
                     </div>
@@ -373,7 +426,7 @@ export default function ApprovalsPanel() {
                         </h4>
                         <Card>
                             {paired.map((d, i) => (
-                                <PairedDeviceRow key={d.device || i} device={d} />
+                                <PairedDeviceRow key={d.deviceId || i} device={d} onRevoke={handleRevokeDevice} busy={busyId === d.deviceId} />
                             ))}
                         </Card>
                     </div>

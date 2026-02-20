@@ -211,6 +211,22 @@ export function approveDevice(requestId) {
     });
 }
 
+export function rejectDevice(requestId) {
+    return request("/setup/api/devices/reject", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId }),
+    });
+}
+
+export function revokeDevice(deviceId, role) {
+    return request("/setup/api/devices/revoke", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId, role }),
+    });
+}
+
 export function importBackup(file) {
     return file.arrayBuffer().then((buf) =>
         rawFetch("/setup/import", {

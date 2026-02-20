@@ -81,7 +81,7 @@ ENV NPM_CONFIG_CACHE=/data/npm-cache
 ENV PNPM_HOME=/data/pnpm
 ENV PNPM_STORE_DIR=/data/pnpm-store
 # bun
-ENV BUN_INSTALL_DIR=/data/bun
+ENV BUN_INSTALL=/data/bun
 ENV BUN_INSTALL_CACHE_DIR=/data/bun-cache
 # uv / uvx
 ENV UV_TOOL_DIR=/data/uv-tools

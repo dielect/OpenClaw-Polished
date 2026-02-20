@@ -183,20 +183,39 @@ function PairingForm({ onLog }) {
     );
 }
 
+/* ── Helpers ── */
+function shortId(id) {
+    if (!id || id.length <= 12) return id;
+    return id.slice(0, 6) + "…" + id.slice(-6);
+}
+
+function timeAgo(ms) {
+    if (!ms) return null;
+    const diff = Date.now() - ms;
+    if (diff < 60_000) return "just now";
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
 /* ── Pending device request row ── */
 function PendingDeviceRow({ device, onApprove, approving }) {
+    const roles = device.roles ? device.roles.join(", ") : (device.role || "");
+
     return (
         <div className="flex items-start justify-between gap-4 px-4 py-3 border-b border-border last:border-b-0">
             <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                     <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded break-all">{device.requestId}</code>
-                    {device.flags && <Badge variant="outline">{device.flags}</Badge>}
+                    {device.platform && <Badge variant="outline">{device.platform}</Badge>}
+                    {device.clientMode && <Badge variant="outline">{device.clientMode}</Badge>}
+                    {device.isRepair && <Badge variant="outline">repair</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                    {device.device && <span title="Device ID">Device: <span className="font-mono">{device.device}</span></span>}
-                    {device.role && <span>Role: {device.role}</span>}
-                    {device.ip && <span>IP: <span className="font-mono">{device.ip}</span></span>}
-                    {device.age && <span>Age: {device.age}</span>}
+                    {device.deviceId && <span title="Device ID">Device: <span className="font-mono">{shortId(device.deviceId)}</span></span>}
+                    {roles && <span>Role: {roles}</span>}
+                    {device.remoteIp && <span>IP: <span className="font-mono">{device.remoteIp}</span></span>}
+                    {device.ts && <span>Requested: {timeAgo(device.ts)}</span>}
                 </div>
             </div>
             <Button variant="default" size="sm" onClick={() => onApprove(device.requestId)} disabled={approving} className="shrink-0">
@@ -208,15 +227,32 @@ function PendingDeviceRow({ device, onApprove, approving }) {
 
 /* ── Paired device row ── */
 function PairedDeviceRow({ device }) {
+    const roles = device.roles ? device.roles.join(", ") : "";
+    const scopes = device.scopes ? device.scopes.join(", ") : "";
+    const tokenCount = Array.isArray(device.tokens) ? device.tokens.length : null;
+    const lastUsed = Array.isArray(device.tokens)
+        ? device.tokens.reduce((latest, t) => Math.max(latest, t.lastUsedAtMs || 0), 0)
+        : null;
+
     return (
-        <div className="px-4 py-3 border-b border-border last:border-b-0 space-y-1">
-            <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded break-all">{device.device}</code>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                {device.roles && <span>Roles: {device.roles}</span>}
-                {device.scopes && <span>Scopes: {device.scopes}</span>}
-                {device.tokens && <span>Tokens: {device.tokens}</span>}
-                {device.ip && <span>IP: <span className="font-mono">{device.ip}</span></span>}
+        <div className="px-4 py-3 border-b border-border last:border-b-0 space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded break-all" title={device.deviceId}>{shortId(device.deviceId)}</code>
+                {device.platform && <Badge variant="outline">{device.platform}</Badge>}
+                {device.clientMode && <Badge variant="outline">{device.clientMode}</Badge>}
             </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                {roles && <span>Roles: {roles}</span>}
+                {scopes && <span>Scopes: {scopes}</span>}
+                {tokenCount != null && <span>Tokens: {tokenCount}</span>}
+                {device.remoteIp && <span>IP: <span className="font-mono">{device.remoteIp}</span></span>}
+            </div>
+            {(device.approvedAtMs || lastUsed) && (
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                    {device.approvedAtMs && <span>Approved: {timeAgo(device.approvedAtMs)}</span>}
+                    {lastUsed > 0 && <span>Last used: {timeAgo(lastUsed)}</span>}
+                </div>
+            )}
         </div>
     );
 }

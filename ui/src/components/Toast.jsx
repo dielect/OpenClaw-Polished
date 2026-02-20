@@ -71,15 +71,15 @@ function ToastItem({ toast, onDismiss }) {
         <div
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-            className={`pointer-events-auto w-[360px] rounded-md border border-border bg-card text-card-foreground shadow-md transition-all duration-150 ${visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+            className={`pointer-events-auto w-[360px] max-w-[calc(100vw-2rem)] rounded-md border border-border bg-card text-card-foreground shadow-md overflow-hidden transition-all duration-150 ${visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
                 }`}
         >
             <div className="grid grid-cols-[1fr_auto] items-start gap-3 p-4">
-                <div className="space-y-1">
+                <div className="space-y-1 min-w-0">
                     <p className="text-sm font-medium leading-snug">
                         {isError ? "Something went wrong" : "Notification"}
                     </p>
-                    <p className="text-sm text-muted-foreground leading-relaxed break-words">
+                    <p className="text-sm text-muted-foreground leading-relaxed break-words overflow-hidden">
                         {summary}
                     </p>
                 </div>

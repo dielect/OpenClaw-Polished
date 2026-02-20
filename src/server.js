@@ -995,98 +995,6 @@ function redactSecrets(text) {
     .replace(/(AA[A-Za-z0-9_-]{10,}:\S{10,})/g, "[REDACTED]");
 }
 
-function extractDeviceRequestIds(text) {
-  const s = String(text || "");
-  const out = new Set();
-
-  // Common patterns: requestId=XYZ, requestId: XYZ, "requestId":"XYZ".
-  for (const m of s.matchAll(/requestId\s*(?:=|:)\s*([A-Za-z0-9_-]{6,})/g)) out.add(m[1]);
-  for (const m of s.matchAll(/"requestId"\s*:\s*"([A-Za-z0-9_-]{6,})"/g)) out.add(m[1]);
-
-  // CLI table output: bare UUIDs (v4) in table cells under "Pending" section.
-  const pendingSection = s.split(/Paired\b/)[0]; // only look before "Paired" section
-  for (const m of pendingSection.matchAll(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi)) out.add(m[1]);
-
-  return Array.from(out);
-}
-
-/**
- * Parse the CLI table output from `devices list` into structured pending/paired arrays.
- * Handles multi-line cell values by joining continuation lines.
- */
-function parseDeviceListOutput(text) {
-  const s = String(text || "");
-  const pending = [];
-  const paired = [];
-
-  // Split into Pending and Paired sections
-  const pendingMatch = s.match(/Pending\s*\(\d+\)\s*\n([\s\S]*?)(?=Paired\s*\(\d+\)|$)/);
-  const pairedMatch = s.match(/Paired\s*\(\d+\)\s*\n([\s\S]*?)$/);
-
-  function parseTableRows(block, headers) {
-    if (!block) return [];
-    const lines = block.split("\n");
-    const rows = [];
-    let current = null;
-
-    for (const line of lines) {
-      // Skip border lines (┌─┬─┐, ├─┼─┤, └─┴─┘)
-      if (/^[┌├└][─┬┼┴┐┤┘]+/.test(line.trim())) continue;
-      // Skip header row (contains the column names)
-      if (headers.some((h) => line.includes(h))) continue;
-      // Data rows start with │
-      if (!line.trim().startsWith("│")) continue;
-
-      const cells = line.split("│").slice(1, -1).map((c) => c.trim());
-      if (cells.length < headers.length) continue;
-
-      // If first cell is non-empty, it's a new row; otherwise continuation of previous
-      if (cells[0]) {
-        if (current) rows.push(current);
-        current = cells.map((c) => c);
-      } else if (current) {
-        // Continuation line — append non-empty cells to current
-        for (let i = 0; i < cells.length; i++) {
-          if (cells[i]) current[i] = (current[i] + cells[i]).trim();
-        }
-      }
-    }
-    if (current) rows.push(current);
-    return rows;
-  }
-
-  if (pendingMatch) {
-    const pendingHeaders = ["Request", "Device", "Role", "IP", "Age", "Flags"];
-    const rows = parseTableRows(pendingMatch[1], pendingHeaders);
-    for (const cells of rows) {
-      pending.push({
-        requestId: cells[0] || "",
-        device: cells[1] || "",
-        role: cells[2] || "",
-        ip: cells[3] || "",
-        age: cells[4] || "",
-        flags: cells[5] || "",
-      });
-    }
-  }
-
-  if (pairedMatch) {
-    const pairedHeaders = ["Device", "Roles", "Scopes", "Tokens", "IP"];
-    const rows = parseTableRows(pairedMatch[1], pairedHeaders);
-    for (const cells of rows) {
-      paired.push({
-        device: cells[0] || "",
-        roles: cells[1] || "",
-        scopes: cells[2] || "",
-        tokens: cells[3] || "",
-        ip: cells[4] || "",
-      });
-    }
-  }
-
-  return { pending, paired };
-}
-
 // Wrapper-managed commands (not openclaw CLI) — keep as strict allowlist.
 const GATEWAY_COMMANDS = new Set(["gateway.restart", "gateway.stop", "gateway.start"]);
 
@@ -1294,11 +1202,17 @@ app.post("/setup/api/pairing/approve", requireSetupAuth, async (req, res) => {
 
 // Device pairing helper (list + approve) to avoid needing SSH.
 app.get("/setup/api/devices/pending", requireSetupAuth, async (_req, res) => {
-  const r = await runCmd(OPENCLAW_NODE, clawArgs(["devices", "list"]));
-  const output = redactSecrets(r.output);
-  const requestIds = extractDeviceRequestIds(output);
-  const parsed = parseDeviceListOutput(output);
-  return res.status(r.code === 0 ? 200 : 500).json({ ok: r.code === 0, requestIds, ...parsed, output });
+  const r = await runCmd(OPENCLAW_NODE, clawArgs(["devices", "list", "--json"]));
+  if (r.code !== 0) {
+    return res.status(500).json({ ok: false, error: redactSecrets(r.output) });
+  }
+  const data = JSON.parse(r.output);
+  return res.json({
+    ok: true,
+    pending: data.pending || [],
+    paired: data.paired || [],
+    requestIds: (data.pending || []).map((d) => d.requestId).filter(Boolean),
+  });
 });
 
 app.post("/setup/api/devices/approve", requireSetupAuth, async (req, res) => {

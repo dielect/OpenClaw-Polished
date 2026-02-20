@@ -100,7 +100,7 @@ The Docker image pre-configures npm, pnpm, bun, and uv to store global installs 
 | npm | `/data/npm` | `/data/npm-cache` |
 | pnpm | `/data/pnpm` | `/data/pnpm-store` |
 | bun | `/data/bun` (`BUN_INSTALL`) | `/data/bun-cache` |
-| uv / uvx | `/data/uv-tools` (envs) `/data/uv-tools/bin` (executables) | `/data/uv-cache` |
+| uv / uvx | `/data/uv-tools` (envs) `/data/uv-bin` (executables) | `/data/uv-cache` |
 
 > **Prerequisite:** a Railway Volume must be mounted at `/data`. Without it these paths won't exist and global installs will fail.
 

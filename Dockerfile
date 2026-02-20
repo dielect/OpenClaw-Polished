@@ -85,10 +85,10 @@ ENV BUN_INSTALL=/data/bun
 ENV BUN_INSTALL_CACHE_DIR=/data/bun-cache
 # uv / uvx
 ENV UV_TOOL_DIR=/data/uv-tools
-ENV UV_TOOL_BIN_DIR=/data/uv-tools/bin
+ENV UV_TOOL_BIN_DIR=/data/uv-bin
 ENV UV_CACHE_DIR=/data/uv-cache
 
-ENV PATH="/data/npm/bin:/data/pnpm:/data/bun/bin:/data/uv-tools/bin:${PATH}"
+ENV PATH="/data/npm/bin:/data/pnpm:/data/bun/bin:/data/uv-bin:${PATH}"
 
 WORKDIR /app
 
